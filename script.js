@@ -77,7 +77,20 @@ window.addEventListener("load", () => {
     renderTaskList(); renderTasksInFeedback(); renderCalendar(); renderLearnedPrioritiesFromModel();
   };
 
-  function featurize(t) { return [(10 - t.subjective || 10) / 10, (10 - t.objective || 10) / 10, Math.log(1 + (t.duration || 30)) / Math.log(241)]; }
+  // 安全な featurize: 値を数値に変換し、NaN の場合は既定値にフォールバックする
+  function featurize(t) {
+    const subjRaw = Number(t.subjective);
+    const objRaw = Number(t.objective);
+    const durRaw = Number(t.duration);
+
+    const subj = Number.isFinite(subjRaw) ? subjRaw : 5;
+    const obj = Number.isFinite(objRaw) ? objRaw : 5;
+    const dur = Number.isFinite(durRaw) ? durRaw : 30;
+
+    // 主観/客観は 0-10 のスケール想定 -> (10 - x)/10, 時間は対数正規化
+    return [(10 - subj) / 10, (10 - obj) / 10, Math.log(1 + Math.max(0, dur)) / Math.log(241)];
+  }
+
   let model = null;
   async function trainModel(records) {
     const data = records.filter(r => r.task);
@@ -101,7 +114,6 @@ window.addEventListener("load", () => {
       el.id = 'learnedPriorities';
       el.className = 'mt-4 p-3 bg-gray-800 rounded';
       el.innerHTML = `<h3 class="font-semibold mb-2">学習済み優先度</h3><div class="learned-list"></div>`;
-      // timeline の下に挿入できればそこへ、なければ body の最後へ
       if (timelineRoot && timelineRoot.parentNode) timelineRoot.parentNode.appendChild(el);
       else document.body.appendChild(el);
     }
@@ -122,7 +134,9 @@ window.addEventListener("load", () => {
       const left = document.createElement('div');
       left.className = 'truncate'; left.textContent = s.title;
       const right = document.createElement('div');
-      right.className = 'ml-2'; right.textContent = `${(s.score * 100).toFixed(1)}%`;
+      right.className = 'ml-2';
+      const pct = Number.isFinite(s.score) ? s.score * 100 : 0;
+      right.textContent = `${pct.toFixed(1)}%`;
       row.appendChild(left); row.appendChild(right);
       list.appendChild(row);
     });
@@ -148,7 +162,9 @@ window.addEventListener("load", () => {
       const row = document.createElement('div');
       row.className = 'flex justify-between items-center text-sm py-1';
       const left = document.createElement('div'); left.className = 'truncate'; left.textContent = a.title;
-      const right = document.createElement('div'); right.className = 'ml-2'; right.textContent = `${(a.score * 100).toFixed(1)}%`;
+      const right = document.createElement('div'); right.className = 'ml-2';
+      const pct = Number.isFinite(a.score) ? a.score * 100 : 0;
+      right.textContent = `${pct.toFixed(1)}%`;
       row.appendChild(left); row.appendChild(right);
       list.appendChild(row);
     });
@@ -162,12 +178,14 @@ window.addEventListener("load", () => {
       if (model) { const v = tf.tensor2d([featurize(t)]); const p = (await model.predict(v).data())[0]; v.dispose(); return { ...t, score: p }; }
       return { ...t, score: Math.random() * 0.5 + 0.25 };
     }));
-    scored.sort((a, b) => b.score - a.score);
+    console.log('generate: scored =', scored); // デバッグログ
+    scored.sort((a, b) => (Number.isFinite(b.score) ? b.score : 0) - (Number.isFinite(a.score) ? a.score : 0));
     scheduleList.innerHTML = '';
     scored.forEach(s => {
       const c = document.createElement('div'); c.className = 'p-3 bg-gray-700 rounded';
+      const pct = Number.isFinite(s.score) ? s.score * 100 : 0;
       c.innerHTML = `<div class="font-semibold">${s.title}</div>
-      <div class="text-sm">優先度: ${(s.score * 100).toFixed(1)}%</div>`;
+      <div class="text-sm">優先度: ${pct.toFixed(1)}%</div>`;
       scheduleList.appendChild(c);
     });
     renderTimeline(scored);
@@ -215,7 +233,7 @@ window.addEventListener("load", () => {
         cell.appendChild(item);
       });
       calendarEl.appendChild(cell);
-    }
+    });
   }
 
   // テーマ切替
