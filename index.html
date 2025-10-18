@@ -29,7 +29,11 @@
         <h2 class="font-semibold mb-2">タスク追加</h2>
         <input id="title" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="タイトル" />
         <input id="deadline" type="datetime-local" class="w-full p-2 rounded mb-2 bg-gray-700" />
-        <input id="genre" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="ジャンル" />
+        <select id="genre" class="w-full p-2 rounded mb-2 bg-gray-700">
+  <option value="勉強">勉強</option>
+  <option value="仕事">仕事</option>
+  <option value="家事">家事</option>
+</select>
         <input id="subjective" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="主観的重要度(1-10)" />
         <input id="objective" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="客観的重要度(1-10)" />
         <input id="duration" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="見積時間(分)" />
