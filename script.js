@@ -67,6 +67,8 @@ window.addEventListener("load", () => {
       objective: +objectiveEl.value || 5,
       duration: +durationEl.value || 30
     };
+    if(t.title.length > 20) return alert('タイトルが長すぎます(20文字以下にしてください)');
+    if(t.duration < 0) return alert('見積時間エラー');
     if (!t.title) return alert('タイトルを入力');
     db.tasks.push(t);
     db.records.push({ task: t, completed: 0, actualDuration: null });
@@ -75,7 +77,7 @@ window.addEventListener("load", () => {
     renderTaskList(); renderTasksInFeedback(); renderCalendar();
   };
 
-  function featurize(t) { return [(t.subjective || 0) / 10, (t.objective || 0) / 10, Math.log(1 + (t.duration || 30)) / Math.log(241)]; }
+  function featurize(t) { return [(10 - t.subjective || 10) / 10, (10 - t.objective || 10) / 10, Math.log(1 + (t.duration || 30)) / Math.log(241)]; }
   let model = null;
   async function trainModel(records) {
     const data = records.filter(r => r.task);
