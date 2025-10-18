@@ -10,14 +10,25 @@
 <style>
   .timeline { position: relative; height: 160px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 12px; border-radius: 10px; }
   .timeline-row { position: relative; height: 36px; margin-bottom: 8px; }
-  .timeline-label { position: absolute; left: 0; top: 0; bottom: 0; width: 160px; display:flex;align-items:center;padding-left:8px;color:#cbd5e1;font-size:13px }
+  .timeline-label { position: absolute; left: 0; top: 0; bottom: 0; width: 160px; display:flex;align-items:center;padding-left:8px;font-size:13px }
   .timeline-track { position: absolute; left: 170px; right: 12px; top: 0; bottom: 0; }
-  .timeline-bar { position: absolute; height: 28px; top: 4px; border-radius: 6px; display:flex;align-items:center;padding-left:8px;color:#001; font-weight:600; }
+  .timeline-bar { position: absolute; height: 28px; top: 4px; border-radius: 6px; display:flex;align-items:center;padding-left:8px; font-weight:600; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendar-cell { border: 1px solid rgba(255,255,255,0.1); padding: 6px; border-radius: 6px; min-height: 60px; font-size: 12px; }
+  .calendar-cell h4 { font-weight: 600; margin-bottom: 4px; font-size: 12px; }
 </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen p-6 font-sans">
+<body class="transition-colors duration-500 min-h-screen p-6 font-sans">
   <div class="max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">行動学習スケジューラー</h1>
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">行動学習スケジューラー</h1>
+      <select id="themeSelect" class="p-2 rounded bg-gray-700 text-sm">
+        <option value="dark">ダーク</option>
+        <option value="light">ライト</option>
+        <option value="blue">ブルー</option>
+        <option value="mono">モノクロ</option>
+      </select>
+    </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
   <div class="bg-gray-800 p-4 rounded-lg">
@@ -30,7 +41,6 @@
     <input id="duration" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="見積時間(分)" />
     <button id="addTask" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold">追加</button>
 
-    <!-- ✅ タスク一覧 -->
     <div class="bg-gray-800 p-4 rounded-lg mt-4">
       <h2 class="font-semibold mb-2">タスク一覧</h2>
       <div id="taskList" class="space-y-2"></div>
@@ -50,6 +60,11 @@
       <h3 class="font-medium mb-2">タイムライン</h3>
       <div id="timeline" class="timeline"></div>
     </div>
+
+    <div class="mt-6">
+      <h3 class="font-medium mb-2">📅 カレンダー</h3>
+      <div id="calendar" class="calendar-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -68,8 +83,8 @@
   </div>
 
 <script>
-const STORAGE_KEY = 'behavior_scheduler_db_v2';
-let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"tasks":[],"records":[]}');
+const STORAGE_KEY = 'behavior_scheduler_db_v3';
+let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"tasks":[],"records":[],"theme":"dark"}');
 
 const titleEl = document.getElementById('title');
 const deadlineEl = document.getElementById('deadline');
@@ -86,168 +101,166 @@ const actualDurationEl = document.getElementById('actualDuration');
 const completedEl = document.getElementById('completed');
 const saveFeedbackBtn = document.getElementById('saveFeedback');
 const taskListEl = document.getElementById('taskList');
+const themeSelect = document.getElementById('themeSelect');
+const calendarEl = document.getElementById('calendar');
 
 function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
 
 function renderTasksInFeedback(){
-  while(feedbackTaskEl.firstChild) feedbackTaskEl.removeChild(feedbackTaskEl.firstChild);
-  if(!db.tasks || db.tasks.length===0){
-    const opt = document.createElement('option'); opt.value=''; opt.textContent='（タスクなし）'; feedbackTaskEl.appendChild(opt); return;
+  feedbackTaskEl.innerHTML = '';
+  if(!db.tasks.length){
+    feedbackTaskEl.innerHTML = '<option value="">（タスクなし）</option>';
+    return;
   }
   db.tasks.forEach((t,i)=>{
-    const opt = document.createElement('option'); opt.value = String(i); opt.textContent = t.title; feedbackTaskEl.appendChild(opt);
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = t.title;
+    feedbackTaskEl.appendChild(opt);
   });
 }
 
-// ✅ タスク一覧表示関数
 function renderTaskList(){
-  while(taskListEl.firstChild) taskListEl.removeChild(taskListEl.firstChild);
-  if(!db.tasks || db.tasks.length===0){
-    const msg = document.createElement('div');
-    msg.textContent = 'タスクがありません';
-    msg.className = 'text-gray-400 text-sm';
-    taskListEl.appendChild(msg);
+  taskListEl.innerHTML = '';
+  if(!db.tasks.length){
+    taskListEl.innerHTML = '<div class="text-gray-400 text-sm">タスクがありません</div>';
     return;
   }
-
-  db.tasks.forEach((t, i)=>{
+  db.tasks.forEach((t,i)=>{
     const card = document.createElement('div');
     card.className = 'p-3 bg-gray-700 rounded flex justify-between items-center';
-
     const info = document.createElement('div');
     info.innerHTML = `<div class="font-semibold">${escapeHtml(t.title)}</div>
-                      <div class="text-sm text-gray-300">期限: ${escapeHtml(t.deadline||'未設定')} / ジャンル: ${escapeHtml(t.genre||'未設定')}</div>`;
-    card.appendChild(info);
-
-    const delBtn = document.createElement('button');
-    delBtn.textContent = '削除';
-    delBtn.className = 'bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm font-semibold';
-    delBtn.addEventListener('click', ()=>{
-      if(confirm(`「${t.title}」を削除しますか？`)){
-        db.tasks.splice(i,1);
-        saveDB();
-        renderTaskList();
-        renderTasksInFeedback();
-      }
-    });
-    card.appendChild(delBtn);
+      <div class="text-sm text-gray-300">期限: ${t.deadline || '未設定'} / ジャンル: ${t.genre}</div>`;
+    const del = document.createElement('button');
+    del.textContent='削除';
+    del.className='bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-sm';
+    del.onclick=()=>{db.tasks.splice(i,1);saveDB();renderTaskList();renderTasksInFeedback();renderCalendar();}
+    card.append(info,del);
     taskListEl.appendChild(card);
   });
 }
 
-// タスク追加
-addBtn.addEventListener('click', ()=>{
-  const t = {
-    title: (titleEl.value || '').trim(),
-    deadline: deadlineEl.value || '',
-    genre: (genreEl.value || '').trim() || '未設定',
-    subjective: Number(subjectiveEl.value) || 5,
-    objective: Number(objectiveEl.value) || 5,
-    duration: Number(durationEl.value) || 30
+addBtn.onclick=()=>{
+  const t={
+    title:titleEl.value.trim(),
+    deadline:deadlineEl.value||'',
+    genre:genreEl.value.trim()||'未設定',
+    subjective:+subjectiveEl.value||5,
+    objective:+objectiveEl.value||5,
+    duration:+durationEl.value||30
   };
-  if(!t.title) { alert('タイトルを入力してください'); return; }
+  if(!t.title) return alert('タイトルを入力');
   db.tasks.push(t);
-  db.records.push({task: t, completed: 0, actualDuration: null});
+  db.records.push({task:t,completed:0,actualDuration:null});
   saveDB();
-  titleEl.value=''; deadlineEl.value=''; genreEl.value=''; subjectiveEl.value=''; objectiveEl.value=''; durationEl.value='';
-  renderTaskList();
-  renderTasksInFeedback();
-});
+  titleEl.value=deadlineEl.value=genreEl.value=subjectiveEl.value=objectiveEl.value=durationEl.value='';
+  renderTaskList();renderTasksInFeedback();renderCalendar();
+};
 
-// featurize
-function featurize(task){
-  return [ (task.subjective||0)/10, (task.objective||0)/10, Math.log(1+(task.duration||30))/Math.log(1+240) ];
-}
-
-let model = null;
+function featurize(t){return [(t.subjective||0)/10,(t.objective||0)/10,Math.log(1+(t.duration||30))/Math.log(241)];}
+let model=null;
 async function trainModel(records){
-  if(!records || records.length===0) return;
-  const data = records.filter(r=>r && r.task).slice(-500);
-  if(data.length===0) return;
-  const xs = tf.tensor2d(data.map(d=>featurize(d.task)));
-  const ys = tf.tensor2d(data.map(d=>[d.completed?1:0]));
-  model = tf.sequential();
-  model.add(tf.layers.dense({inputShape:[3], units:8, activation:'relu'}));
-  model.add(tf.layers.dense({units:4, activation:'relu'}));
-  model.add(tf.layers.dense({units:1, activation:'sigmoid'}));
-  model.compile({optimizer:'adam', loss:'binaryCrossentropy'});
-  await model.fit(xs, ys, {epochs:20, batchSize:Math.min(16, data.length)});
-  xs.dispose(); ys.dispose();
+  const data=records.filter(r=>r.task);
+  if(!data.length) return;
+  const xs=tf.tensor2d(data.map(d=>featurize(d.task)));
+  const ys=tf.tensor2d(data.map(d=>[d.completed?1:0]));
+  model=tf.sequential();
+  model.add(tf.layers.dense({inputShape:[3],units:8,activation:'relu'}));
+  model.add(tf.layers.dense({units:4,activation:'relu'}));
+  model.add(tf.layers.dense({units:1,activation:'sigmoid'}));
+  model.compile({optimizer:'adam',loss:'binaryCrossentropy'});
+  await model.fit(xs,ys,{epochs:15,batchSize:8});
+  xs.dispose();ys.dispose();
 }
 
-// スケジュール生成
-generateBtn.addEventListener('click', async ()=>{
-  if(!db.tasks || db.tasks.length===0){ alert('タスクを追加してください'); return; }
-  if(!model && db.records && db.records.length>0) await trainModel(db.records);
-
-  const scored = await Promise.all(db.tasks.map(async t=>{
-    if(model){
-      const v = tf.tensor2d([featurize(t)]);
-      const p = (await model.predict(v).data())[0]; v.dispose(); return {...t, score: p};
-    } else {
-      return {...t, score: Math.random()*0.5 + 0.25};
-    }
+generateBtn.onclick=async()=>{
+  if(!db.tasks.length) return alert('タスクを追加してください');
+  if(!model && db.records.length) await trainModel(db.records);
+  const scored=await Promise.all(db.tasks.map(async t=>{
+    if(model){const v=tf.tensor2d([featurize(t)]);const p=(await model.predict(v).data())[0];v.dispose();return {...t,score:p};}
+    return {...t,score:Math.random()*0.5+0.25};
   }));
-  scored.sort((a,b)=>b.score - a.score);
-
-  while(scheduleList.firstChild) scheduleList.removeChild(scheduleList.firstChild);
+  scored.sort((a,b)=>b.score-a.score);
+  scheduleList.innerHTML='';
   scored.forEach(s=>{
-    const card = document.createElement('div'); card.className='p-3 bg-gradient-to-r from-gray-700 to-gray-600 rounded-xl shadow-md';
-    const h = document.createElement('div'); h.className='font-semibold'; h.textContent = s.title; card.appendChild(h);
-    const meta = document.createElement('div'); meta.className='text-sm text-gray-300'; meta.textContent = `ジャンル: ${s.genre || '未設定'} | 期限: ${s.deadline || '未設定'}`; card.appendChild(meta);
-    const score = document.createElement('div'); score.className='text-sm mt-1 text-blue-300 font-bold'; score.textContent = `優先度: ${(s.score*100).toFixed(1)}%`; card.appendChild(score);
-    scheduleList.appendChild(card);
+    const c=document.createElement('div');c.className='p-3 bg-gray-700 rounded';
+    c.innerHTML=`<div class="font-semibold">${s.title}</div>
+      <div class="text-sm">優先度: ${(s.score*100).toFixed(1)}%</div>`;
+    scheduleList.appendChild(c);
   });
-
   renderTimeline(scored);
-  scored.forEach(s => db.records.push({task: s, completed: 0, actualDuration: null}));
+  renderCalendar();
+  db.records.push(...scored.map(s=>({task:s,completed:0,actualDuration:null})));
   saveDB();
-  renderTaskList();
-  renderTasksInFeedback();
-});
+};
 
 function renderTimeline(tasks){
-  while(timelineRoot.firstChild) timelineRoot.removeChild(timelineRoot.firstChild);
-  if(!tasks || tasks.length===0) return;
-  const total = tasks.reduce((sum,t)=> sum + (t.duration||30), 0) || 1;
-  let cur = 0;
-  tasks.forEach(t => {
-    const row = document.createElement('div'); row.className='timeline-row';
-    const label = document.createElement('div'); label.className='timeline-label'; label.textContent = t.title;
-    const track = document.createElement('div'); track.className='timeline-track';
-    const bar = document.createElement('div'); bar.className='timeline-bar';
-    const leftPercent = (cur/total) * 100;
-    const widthPercent = ((t.duration||30)/total) * 100;
-    bar.style.left = leftPercent + '%';
-    bar.style.width = Math.max(2, widthPercent) + '%';
-    const hue = Math.round(200 - (t.score||0)*120);
-    bar.style.background = `hsl(${hue} 90% 65%)`;
-    bar.textContent = `${t.duration||30}m`;
-    track.appendChild(bar);
-    row.appendChild(label); row.appendChild(track);
-    timelineRoot.appendChild(row);
-    cur += (t.duration||30);
+  timelineRoot.innerHTML='';
+  const total=tasks.reduce((a,b)=>a+(b.duration||30),0);
+  let cur=0;
+  tasks.forEach(t=>{
+    const r=document.createElement('div');r.className='timeline-row';
+    const l=document.createElement('div');l.className='timeline-label';l.textContent=t.title;
+    const tr=document.createElement('div');tr.className='timeline-track';
+    const b=document.createElement('div');b.className='timeline-bar';
+    b.style.left=(cur/total)*100+'%';b.style.width=((t.duration||30)/total)*100+'%';
+    const hue=Math.round(200-(t.score||0)*120);
+    b.style.background=`hsl(${hue} 90% 65%)`;b.textContent=`${t.duration}m`;
+    tr.appendChild(b);r.append(l,tr);timelineRoot.appendChild(r);cur+=t.duration;
   });
 }
 
-// フィードバック保存
-saveFeedbackBtn.addEventListener('click', async ()=>{
-  const idx = Number(feedbackTaskEl.value);
-  if(isNaN(idx) || !db.tasks[idx]){ alert('対象タスクを選択してください'); return; }
-  const dur = Number(actualDurationEl.value) || db.tasks[idx].duration || 0;
-  const comp = Number(completedEl.value) || 0;
-  db.records.push({task: db.tasks[idx], completed: comp, actualDuration: dur});
-  saveDB();
-  alert('フィードバックを保存しました');
-  await trainModel(db.records);
-  renderTaskList();
-  renderTasksInFeedback();
-});
+// カレンダー描画
+function renderCalendar(){
+  calendarEl.innerHTML='';
+  const now=new Date();
+  const year=now.getFullYear(),month=now.getMonth();
+  const first=new Date(year,month,1);
+  const last=new Date(year,month+1,0);
+  const startDay=first.getDay(),days=last.getDate();
+  for(let i=0;i<startDay;i++) calendarEl.appendChild(document.createElement('div'));
+  for(let d=1;d<=days;d++){
+    const cell=document.createElement('div');cell.className='calendar-cell';
+    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cell.innerHTML=`<h4>${d}</h4>`;
+    const todaysTasks=db.tasks.filter(t=>t.deadline.startsWith(dateStr));
+    todaysTasks.forEach(t=>{
+      const item=document.createElement('div');
+      item.textContent='• '+t.title;
+      item.className='text-xs truncate';
+      cell.appendChild(item);
+    });
+    calendarEl.appendChild(cell);
+  }
+}
 
-renderTaskList();
-renderTasksInFeedback();
+// テーマ切替
+function applyTheme(th){
+  const b=document.body;
+  b.classList.remove('dark','light','blue','mono');
+  if(th==='light'){b.className='bg-gray-100 text-gray-900';}
+  else if(th==='blue'){b.className='bg-blue-950 text-blue-100';}
+  else if(th==='mono'){b.className='bg-gray-200 text-gray-800';}
+  else{b.className='bg-gray-900 text-gray-100';}
+  db.theme=th;saveDB();
+}
+themeSelect.onchange=()=>applyTheme(themeSelect.value);
+
+saveFeedbackBtn.onclick=async()=>{
+  const idx=+feedbackTaskEl.value;
+  if(isNaN(idx)||!db.tasks[idx]) return alert('選択してください');
+  const dur=+actualDurationEl.value||db.tasks[idx].duration;
+  const comp=+completedEl.value||0;
+  db.records.push({task:db.tasks[idx],actualDuration:dur,completed:comp});
+  await trainModel(db.records);
+  saveDB();alert('保存しました');
+};
+
+applyTheme(db.theme);
+themeSelect.value=db.theme;
+renderTaskList();renderTasksInFeedback();renderCalendar();
 </script>
 
 </body>
