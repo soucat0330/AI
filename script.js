@@ -52,7 +52,7 @@ window.addEventListener("load", () => {
       const del = document.createElement('button');
       del.textContent = '削除';
       del.className = 'bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-sm';
-      del.onclick = () => { db.tasks.splice(i, 1); saveDB(); renderTaskList(); renderTasksInFeedback(); renderCalendar(); }
+      del.onclick = () => { db.tasks.splice(i, 1); saveDB(); renderTaskList(); renderTasksInFeedback(); renderCalendar(); renderLearnedPrioritiesFromModel(); }
       card.append(info, del);
       taskListEl.appendChild(card);
     });
@@ -74,7 +74,7 @@ window.addEventListener("load", () => {
     db.records.push({ task: t, completed: 0, actualDuration: null });
     saveDB();
     titleEl.value = deadlineEl.value = genreEl.value = subjectiveEl.value = objectiveEl.value = durationEl.value = '';
-    renderTaskList(); renderTasksInFeedback(); renderCalendar();
+    renderTaskList(); renderTasksInFeedback(); renderCalendar(); renderLearnedPrioritiesFromModel();
   };
 
   function featurize(t) { return [(10 - t.subjective || 10) / 10, (10 - t.objective || 10) / 10, Math.log(1 + (t.duration || 30)) / Math.log(241)]; }
@@ -92,6 +92,68 @@ window.addEventListener("load", () => {
     await model.fit(xs, ys, { epochs: 15, batchSize: 8 });
     xs.dispose(); ys.dispose();
   }
+
+  // --- 学習済み優先度表示 (下部) のためのユーティリティ関数 ---
+  function getOrCreateLearnedEl() {
+    let el = document.getElementById('learnedPriorities');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'learnedPriorities';
+      el.className = 'mt-4 p-3 bg-gray-800 rounded';
+      el.innerHTML = `<h3 class="font-semibold mb-2">学習済み優先度</h3><div class="learned-list"></div>`;
+      // timeline の下に挿入できればそこへ、なければ body の最後へ
+      if (timelineRoot && timelineRoot.parentNode) timelineRoot.parentNode.appendChild(el);
+      else document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function renderLearnedPrioritiesFromScored(scored) {
+    const el = getOrCreateLearnedEl();
+    const list = el.querySelector('.learned-list');
+    list.innerHTML = '';
+    if (!scored || !scored.length) {
+      list.innerHTML = '<div class="text-sm text-gray-400">表示する優先度がありません</div>';
+      return;
+    }
+    scored.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'flex justify-between items-center text-sm py-1';
+      const left = document.createElement('div');
+      left.className = 'truncate'; left.textContent = s.title;
+      const right = document.createElement('div');
+      right.className = 'ml-2'; right.textContent = `${(s.score * 100).toFixed(1)}%`;
+      row.appendChild(left); row.appendChild(right);
+      list.appendChild(row);
+    });
+  }
+
+  async function renderLearnedPrioritiesFromModel() {
+    const el = getOrCreateLearnedEl();
+    const list = el.querySelector('.learned-list');
+    list.innerHTML = '';
+    if (!db.tasks.length) {
+      list.innerHTML = '<div class="text-sm text-gray-400">タスクがありません</div>';
+      return;
+    }
+    if (!model) {
+      list.innerHTML = '<div class="text-sm text-gray-400">モデルが学習されていません。生成ボタンを押すかフィードバックを保存してモデルを学習してください。</div>';
+      return;
+    }
+    const xs = tf.tensor2d(db.tasks.map(t => featurize(t)));
+    const preds = await model.predict(xs).data();
+    xs.dispose();
+    const arr = db.tasks.map((t, i) => ({ title: t.title, score: preds[i] })).sort((a, b) => b.score - a.score);
+    arr.forEach(a => {
+      const row = document.createElement('div');
+      row.className = 'flex justify-between items-center text-sm py-1';
+      const left = document.createElement('div'); left.className = 'truncate'; left.textContent = a.title;
+      const right = document.createElement('div'); right.className = 'ml-2'; right.textContent = `${(a.score * 100).toFixed(1)}%`;
+      row.appendChild(left); row.appendChild(right);
+      list.appendChild(row);
+    });
+  }
+  // --- /学習済み優先度表示 ---
 
   generateBtn.onclick = async () => {
     if (!db.tasks.length) return alert('タスクを追加してください');
@@ -112,6 +174,8 @@ window.addEventListener("load", () => {
     renderCalendar();
     db.records.push(...scored.map(s => ({ task: s, completed: 0, actualDuration: null })));
     saveDB();
+    // 生成したスコアを下部に表示
+    renderLearnedPrioritiesFromScored(scored);
   };
 
   function renderTimeline(tasks) {
@@ -174,9 +238,13 @@ window.addEventListener("load", () => {
     db.records.push({ task: db.tasks[idx], actualDuration: dur, completed: comp });
     await trainModel(db.records);
     saveDB(); alert('保存しました');
+    // モデル学習後はモデルに基づく優先度表示を更新
+    await renderLearnedPrioritiesFromModel();
   };
 
   applyTheme(db.theme);
   themeSelect.value = db.theme;
   renderTaskList(); renderTasksInFeedback(); renderCalendar();
+  // 初期表示：もしモデルがあればモデルに基づく優先度を表示（通常は学習後に表示されます）
+  renderLearnedPrioritiesFromModel();
 });
