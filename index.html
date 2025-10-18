@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
@@ -8,260 +7,163 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <style>
-  .timeline { position: relative; height: 160px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 12px; border-radius: 10px; }
-  .timeline-row { position: relative; height: 36px; margin-bottom: 8px; }
-  .timeline-label { position: absolute; left: 0; top: 0; bottom: 0; width: 160px; display:flex;align-items:center;padding-left:8px;font-size:13px }
-  .timeline-track { position: absolute; left: 170px; right: 12px; top: 0; bottom: 0; }
-  .timeline-bar { position: absolute; height: 28px; top: 4px; border-radius: 6px; display:flex;align-items:center;padding-left:8px; font-weight:600; }
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .calendar-cell { border: 1px solid rgba(255,255,255,0.1); padding: 6px; border-radius: 6px; min-height: 60px; font-size: 12px; }
-  .calendar-cell h4 { font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+/* タイムラインとカレンダー */
+.timeline { position: relative; height: 160px; border: 1px solid var(--border-color); background: var(--timeline-bg); padding: 12px; border-radius: 10px; }
+.timeline-row { position: relative; height: 36px; margin-bottom: 8px; }
+.timeline-label { position: absolute; left: 0; top: 0; bottom: 0; width: 160px; display:flex;align-items:center;padding-left:8px;font-size:13px; color: var(--text-color); }
+.timeline-track { position: absolute; left: 170px; right: 12px; top: 0; bottom: 0; }
+.timeline-bar { position: absolute; height: 28px; top: 4px; border-radius: 6px; display:flex;align-items:center;padding-left:8px; font-weight:600; color: var(--bar-text-color); }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-cell { border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; min-height: 60px; font-size: 12px; background: var(--cell-bg); color: var(--text-color); }
+.calendar-cell h4 { font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+
+/* テーマ変数 */
+body.dark { --bg-color:#1f2937; --text-color:#f9fafb; --bg-card:#374151; --timeline-bg:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); --border-color:rgba(255,255,255,0.06); --cell-bg:#374151; --bar-text-color:#001; }
+body.light { --bg-color:#f3f4f6; --text-color:#111827; --bg-card:#e5e7eb; --timeline-bg:#f9fafb; --border-color:rgba(0,0,0,0.1); --cell-bg:#e5e7eb; --bar-text-color:#000; }
+body.blue { --bg-color:#1e3a8a; --text-color:#dbeafe; --bg-card:#3b82f6; --timeline-bg:#93c5fd33; --border-color:rgba(219,234,254,0.6); --cell-bg:#3b82f6; --bar-text-color:#001; }
+body.mono { --bg-color:#e5e7eb; --text-color:#111827; --bg-card:#9ca3af; --timeline-bg:#d1d5db; --border-color:rgba(0,0,0,0.2); --cell-bg:#9ca3af; --bar-text-color:#000; }
+
+/* カード共通 */
+.card { background-color: var(--bg-card); color: var(--text-color); border-radius:0.5rem; padding:0.75rem; }
 </style>
 </head>
 <body class="transition-colors duration-500 min-h-screen p-6 font-sans">
-  <div class="max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">行動学習スケジューラー</h1>
-      <select id="themeSelect" class="p-2 rounded bg-gray-700 text-sm">
-        <option value="dark">ダーク</option>
-        <option value="light">ライト</option>
-        <option value="blue">ブルー</option>
-        <option value="mono">モノクロ</option>
-      </select>
-    </div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-  <div class="bg-gray-800 p-4 rounded-lg">
-    <h2 class="font-semibold mb-2">タスク追加</h2>
-    <input id="title" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="タイトル" />
-    <input id="deadline" type="datetime-local" class="w-full p-2 rounded mb-2 bg-gray-700" />
-    <input id="genre" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="ジャンル" />
-    <input id="subjective" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="主観的重要度(1-10)" />
-    <input id="objective" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="客観的重要度(1-10)" />
-    <input id="duration" type="number" class="w-full p-2 rounded mb-2 bg-gray-700" placeholder="見積時間(分)" />
-    <button id="addTask" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold">追加</button>
-
-    <div class="bg-gray-800 p-4 rounded-lg mt-4">
-      <h2 class="font-semibold mb-2">タスク一覧</h2>
-      <div id="taskList" class="space-y-2"></div>
-    </div>
+<div class="max-w-6xl mx-auto">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">行動学習スケジューラー</h1>
+    <select id="themeSelect" class="p-2 rounded text-sm">
+      <option value="dark">ダーク</option>
+      <option value="light">ライト</option>
+      <option value="blue">ブルー</option>
+      <option value="mono">モノクロ</option>
+    </select>
   </div>
 
-  <div class="col-span-2 bg-gray-800 p-4 rounded-lg">
-    <h2 class="font-semibold mb-2">スケジュール生成</h2>
-    <div class="flex gap-2 mb-3">
-      <input id="date" type="date" class="p-2 rounded bg-gray-700" />
-      <button id="generate" class="bg-green-600 hover:bg-green-500 py-2 px-4 rounded font-semibold">生成</button>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h2 class="font-semibold mb-2">タスク追加</h2>
+      <input id="title" class="w-full p-2 rounded mb-2" placeholder="タイトル" />
+      <input id="deadline" type="datetime-local" class="w-full p-2 rounded mb-2" />
+      <select id="genre" class="w-full p-2 rounded mb-2">
+        <option value="勉強">勉強</option>
+        <option value="仕事">仕事</option>
+        <option value="家事">家事</option>
+      </select>
+      <input id="subjective" type="number" class="w-full p-2 rounded mb-2" placeholder="主観的重要度(1-10)" />
+      <input id="objective" type="number" class="w-full p-2 rounded mb-2" placeholder="客観的重要度(1-10)" />
+      <input id="duration" type="number" class="w-full p-2 rounded mb-2" placeholder="見積時間(分)" />
+      <button id="addTask" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold">追加</button>
+
+      <div class="mt-4">
+        <h2 class="font-semibold mb-2">タスク一覧</h2>
+        <div id="taskList" class="space-y-2"></div>
+      </div>
     </div>
 
-    <div id="scheduleList" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4"></div>
+    <div class="col-span-2 card">
+      <h2 class="font-semibold mb-2">スケジュール生成</h2>
+      <div class="flex gap-2 mb-3">
+        <input id="date" type="date" class="p-2 rounded" />
+        <button id="generate" class="bg-green-600 hover:bg-green-500 py-2 px-4 rounded font-semibold">生成</button>
+      </div>
 
-    <div>
+      <div id="scheduleList" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4"></div>
+
       <h3 class="font-medium mb-2">タイムライン</h3>
-      <div id="timeline" class="timeline"></div>
-    </div>
+      <div id="timeline" class="timeline mb-6"></div>
 
-    <div class="mt-6">
       <h3 class="font-medium mb-2">📅 カレンダー</h3>
       <div id="calendar" class="calendar-grid"></div>
     </div>
   </div>
-</div>
 
-<div class="bg-gray-800 p-4 rounded-lg mt-4">
-  <h2 class="font-semibold mb-2">フィードバック</h2>
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-    <select id="feedbackTask" class="col-span-2 p-2 rounded bg-gray-700"></select>
-    <input id="actualDuration" type="number" placeholder="実績時間(分)" class="p-2 rounded bg-gray-700" />
-    <select id="completed" class="p-2 rounded bg-gray-700"><option value="1">完了した</option><option value="0">未完了</option></select>
-  </div>
-  <div class="mt-3">
-    <button id="saveFeedback" class="bg-yellow-500 hover:bg-yellow-400 py-2 px-4 rounded font-semibold">フィードバックを保存</button>
+  <div class="card mt-4">
+    <h2 class="font-semibold mb-2">フィードバック</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+      <select id="feedbackTask" class="col-span-2 p-2 rounded"></select>
+      <input id="actualDuration" type="number" placeholder="実績時間(分)" class="p-2 rounded" />
+      <select id="completed" class="p-2 rounded"><option value="1">完了した</option><option value="0">未完了</option></select>
+    </div>
+    <div class="mt-3">
+      <button id="saveFeedback" class="bg-yellow-500 hover:bg-yellow-400 py-2 px-4 rounded font-semibold">フィードバックを保存</button>
+    </div>
   </div>
 </div>
-
-  </div>
 
 <script>
-const STORAGE_KEY = 'behavior_scheduler_db_v3';
-let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"tasks":[],"records":[],"theme":"dark"}');
+const STORAGE_KEY='behavior_scheduler_db_theme';
+let db=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"tasks":[],"records":[],"theme":"dark"}');
 
-const titleEl = document.getElementById('title');
-const deadlineEl = document.getElementById('deadline');
-const genreEl = document.getElementById('genre');
-const subjectiveEl = document.getElementById('subjective');
-const objectiveEl = document.getElementById('objective');
-const durationEl = document.getElementById('duration');
-const addBtn = document.getElementById('addTask');
-const generateBtn = document.getElementById('generate');
-const scheduleList = document.getElementById('scheduleList');
-const timelineRoot = document.getElementById('timeline');
-const feedbackTaskEl = document.getElementById('feedbackTask');
-const actualDurationEl = document.getElementById('actualDuration');
-const completedEl = document.getElementById('completed');
-const saveFeedbackBtn = document.getElementById('saveFeedback');
-const taskListEl = document.getElementById('taskList');
-const themeSelect = document.getElementById('themeSelect');
-const calendarEl = document.getElementById('calendar');
+const titleEl=document.getElementById('title');
+const deadlineEl=document.getElementById('deadline');
+const genreEl=document.getElementById('genre');
+const subjectiveEl=document.getElementById('subjective');
+const objectiveEl=document.getElementById('objective');
+const durationEl=document.getElementById('duration');
+const addBtn=document.getElementById('addTask');
+const generateBtn=document.getElementById('generate');
+const scheduleList=document.getElementById('scheduleList');
+const timelineRoot=document.getElementById('timeline');
+const feedbackTaskEl=document.getElementById('feedbackTask');
+const actualDurationEl=document.getElementById('actualDuration');
+const completedEl=document.getElementById('completed');
+const saveFeedbackBtn=document.getElementById('saveFeedback');
+const taskListEl=document.getElementById('taskList');
+const themeSelect=document.getElementById('themeSelect');
+const calendarEl=document.getElementById('calendar');
 
-function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
-
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+function saveDB(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(db)); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+function applyTheme(th){ document.body.classList.remove('dark','light','blue','mono'); document.body.classList.add(th); db.theme=th; saveDB(); }
 
 function renderTasksInFeedback(){
-  feedbackTaskEl.innerHTML = '';
-  if(!db.tasks.length){
-    feedbackTaskEl.innerHTML = '<option value="">（タスクなし）</option>';
-    return;
-  }
-  db.tasks.forEach((t,i)=>{
-    const opt = document.createElement('option');
-    opt.value = i; opt.textContent = t.title;
-    feedbackTaskEl.appendChild(opt);
-  });
+  feedbackTaskEl.innerHTML='';
+  if(!db.tasks.length){ feedbackTaskEl.innerHTML='<option value="">（タスクなし）</option>'; return; }
+  db.tasks.forEach((t,i)=>{ const opt=document.createElement('option'); opt.value=i; opt.textContent=t.title; feedbackTaskEl.appendChild(opt); });
 }
 
 function renderTaskList(){
-  taskListEl.innerHTML = '';
-  if(!db.tasks.length){
-    taskListEl.innerHTML = '<div class="text-gray-400 text-sm">タスクがありません</div>';
-    return;
-  }
+  taskListEl.innerHTML='';
+  if(!db.tasks.length){ taskListEl.innerHTML='<div class="text-gray-400 text-sm">タスクがありません</div>'; return; }
   db.tasks.forEach((t,i)=>{
-    const card = document.createElement('div');
-    card.className = 'p-3 bg-gray-700 rounded flex justify-between items-center';
-    const info = document.createElement('div');
-    info.innerHTML = `<div class="font-semibold">${escapeHtml(t.title)}</div>
-      <div class="text-sm text-gray-300">期限: ${t.deadline || '未設定'} / ジャンル: ${t.genre}</div>`;
-    const del = document.createElement('button');
-    del.textContent='削除';
-    del.className='bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-sm';
-    del.onclick=()=>{db.tasks.splice(i,1);saveDB();renderTaskList();renderTasksInFeedback();renderCalendar();}
-    card.append(info,del);
-    taskListEl.appendChild(card);
+    const card=document.createElement('div'); card.className='p-3 bg-gray-700 rounded flex justify-between items-center';
+    const info=document.createElement('div'); info.innerHTML=`<div class="font-semibold">${escapeHtml(t.title)}</div>
+      <div class="text-sm text-gray-300">期限: ${t.deadline||'未設定'} / ジャンル: ${t.genre}</div>`;
+    const del=document.createElement('button'); del.textContent='削除'; del.className='bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-sm';
+    del.onclick=()=>{ db.tasks.splice(i,1); saveDB(); renderTaskList(); renderTasksInFeedback(); renderCalendar(); };
+    card.append(info,del); taskListEl.appendChild(card);
   });
 }
 
-addBtn.onclick=()=>{
-  const t={
-    title:titleEl.value.trim(),
-    deadline:deadlineEl.value||'',
-    genre:genreEl.value.trim()||'未設定',
-    subjective:+subjectiveEl.value||5,
-    objective:+objectiveEl.value||5,
-    duration:+durationEl.value||30
-  };
-  if(!t.title) return alert('タイトルを入力');
-  db.tasks.push(t);
-  db.records.push({task:t,completed:0,actualDuration:null});
-  saveDB();
-  titleEl.value=deadlineEl.value=genreEl.value=subjectiveEl.value=objectiveEl.value=durationEl.value='';
-  renderTaskList();renderTasksInFeedback();renderCalendar();
-};
-
-function featurize(t){return [(t.subjective||0)/10,(t.objective||0)/10,Math.log(1+(t.duration||30))/Math.log(241)];}
-let model=null;
-async function trainModel(records){
-  const data=records.filter(r=>r.task);
-  if(!data.length) return;
-  const xs=tf.tensor2d(data.map(d=>featurize(d.task)));
-  const ys=tf.tensor2d(data.map(d=>[d.completed?1:0]));
-  model=tf.sequential();
-  model.add(tf.layers.dense({inputShape:[3],units:8,activation:'relu'}));
-  model.add(tf.layers.dense({units:4,activation:'relu'}));
-  model.add(tf.layers.dense({units:1,activation:'sigmoid'}));
-  model.compile({optimizer:'adam',loss:'binaryCrossentropy'});
-  await model.fit(xs,ys,{epochs:15,batchSize:8});
-  xs.dispose();ys.dispose();
-}
-
-generateBtn.onclick=async()=>{
-  if(!db.tasks.length) return alert('タスクを追加してください');
-  if(!model && db.records.length) await trainModel(db.records);
-  const scored=await Promise.all(db.tasks.map(async t=>{
-    if(model){const v=tf.tensor2d([featurize(t)]);const p=(await model.predict(v).data())[0];v.dispose();return {...t,score:p};}
-    return {...t,score:Math.random()*0.5+0.25};
-  }));
-  scored.sort((a,b)=>b.score-a.score);
-  scheduleList.innerHTML='';
-  scored.forEach(s=>{
-    const c=document.createElement('div');c.className='p-3 bg-gray-700 rounded';
-    c.innerHTML=`<div class="font-semibold">${s.title}</div>
-      <div class="text-sm">優先度: ${(s.score*100).toFixed(1)}%</div>`;
-    scheduleList.appendChild(c);
-  });
-  renderTimeline(scored);
-  renderCalendar();
-  db.records.push(...scored.map(s=>({task:s,completed:0,actualDuration:null})));
-  saveDB();
-};
-
-function renderTimeline(tasks){
-  timelineRoot.innerHTML='';
-  const total=tasks.reduce((a,b)=>a+(b.duration||30),0);
-  let cur=0;
-  tasks.forEach(t=>{
-    const r=document.createElement('div');r.className='timeline-row';
-    const l=document.createElement('div');l.className='timeline-label';l.textContent=t.title;
-    const tr=document.createElement('div');tr.className='timeline-track';
-    const b=document.createElement('div');b.className='timeline-bar';
-    b.style.left=(cur/total)*100+'%';b.style.width=((t.duration||30)/total)*100+'%';
-    const hue=Math.round(200-(t.score||0)*120);
-    b.style.background=`hsl(${hue} 90% 65%)`;b.textContent=`${t.duration}m`;
-    tr.appendChild(b);r.append(l,tr);timelineRoot.appendChild(r);cur+=t.duration;
-  });
-}
-
-// カレンダー描画
+// カレンダー
 function renderCalendar(){
   calendarEl.innerHTML='';
-  const now=new Date();
-  const year=now.getFullYear(),month=now.getMonth();
-  const first=new Date(year,month,1);
-  const last=new Date(year,month+1,0);
-  const startDay=first.getDay(),days=last.getDate();
+  const now=new Date(),year=now.getFullYear(),month=now.getMonth();
+  const first=new Date(year,month,1), last=new Date(year,month+1,0);
+  const startDay=first.getDay(), days=last.getDate();
   for(let i=0;i<startDay;i++) calendarEl.appendChild(document.createElement('div'));
-  for(let d=1;d<=days;d++){
-    const cell=document.createElement('div');cell.className='calendar-cell';
+  for(let d=1; d<=days; d++){
+    const cell=document.createElement('div'); cell.className='calendar-cell';
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     cell.innerHTML=`<h4>${d}</h4>`;
-    const todaysTasks=db.tasks.filter(t=>t.deadline.startsWith(dateStr));
-    todaysTasks.forEach(t=>{
-      const item=document.createElement('div');
-      item.textContent='• '+t.title;
-      item.className='text-xs truncate';
-      cell.appendChild(item);
-    });
+    db.tasks.filter(t=>t.deadline.startsWith(dateStr)).forEach(t=>{ const item=document.createElement('div'); item.textContent='• '+t.title; item.className='text-xs truncate'; cell.appendChild(item); });
     calendarEl.appendChild(cell);
   }
 }
 
-// テーマ切替
-function applyTheme(th){
-  const b=document.body;
-  b.classList.remove('dark','light','blue','mono');
-  if(th==='light'){b.className='bg-gray-100 text-gray-900';}
-  else if(th==='blue'){b.className='bg-blue-950 text-blue-100';}
-  else if(th==='mono'){b.className='bg-gray-200 text-gray-800';}
-  else{b.className='bg-gray-900 text-gray-100';}
-  db.theme=th;saveDB();
-}
+// 初期化
+applyTheme(db.theme); themeSelect.value=db.theme;
+renderTaskList(); renderTasksInFeedback(); renderCalendar();
+
+// イベント
 themeSelect.onchange=()=>applyTheme(themeSelect.value);
-
-saveFeedbackBtn.onclick=async()=>{
-  const idx=+feedbackTaskEl.value;
-  if(isNaN(idx)||!db.tasks[idx]) return alert('選択してください');
-  const dur=+actualDurationEl.value||db.tasks[idx].duration;
-  const comp=+completedEl.value||0;
-  db.records.push({task:db.tasks[idx],actualDuration:dur,completed:comp});
-  await trainModel(db.records);
-  saveDB();alert('保存しました');
+addBtn.onclick=()=>{
+  const t={title:titleEl.value.trim(), deadline:deadlineEl.value||'', genre:genreEl.value, subjective:+subjectiveEl.value||5, objective:+objectiveEl.value||5, duration:+durationEl.value||30};
+  if(!t.title) return alert('タイトルを入力');
+  db.tasks.push(t); db.records.push({task:t, completed:0, actualDuration:null}); saveDB();
+  titleEl.value=deadlineEl.value=subjectiveEl.value=objectiveEl.value=durationEl.value='';
+  renderTaskList(); renderTasksInFeedback(); renderCalendar();
 };
-
-applyTheme(db.theme);
-themeSelect.value=db.theme;
-renderTaskList();renderTasksInFeedback();renderCalendar();
 </script>
-
 </body>
 </html>
