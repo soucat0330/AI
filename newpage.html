@@ -1,639 +1,390 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <title>スケジュール生成ツール（連続配置・表示集約版）</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <!-- Bootstrap CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { padding: 18px; }
-    .calendar { overflow-x:auto; }
-    .slot { border: 1px solid #eee; padding:4px; min-height:26px; font-size:12px; }
-    .task-fixed { background: #dbeafe; border-left:4px solid #60a5fa; }
-    .task-assigned { background: #dcfce7; border-left:4px solid #4ade80; }
-    .task-deadline { background: #fff7ed; border-left:4px solid #fb923c; }
-    .slot-time { font-size:11px; color:#666; width:60px; }
-    .small-note { font-size:12px; color:#666; }
-    .scroll-table { max-width:100%; overflow:auto; }
-    /* Block style for compact summary display */
-    .block-summary { padding:8px; border-radius:6px; margin-bottom:6px; background:#eef; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Planner Prototype</title>
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --secondary: #FF6584;
+            --bg: #F0F4F8;
+            --card-bg: #FFFFFF;
+            --text: #2D3748;
+            --muted: #A0AEC0;
+            --fluid-ease: cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            border-radius: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header */
+        header {
+            padding: 24px;
+            background: linear-gradient(135deg, #6C63FF 0%, #a18aff 100%);
+            color: white;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        p { margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem; }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            z-index: 10;
+        }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        
+        input, select {
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        button#add-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button#add-btn:active { transform: scale(0.98); }
+
+        /* Timeline (Stream) */
+        .timeline-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: linear-gradient(to bottom, #fff 0%, #f7f9fc 100%);
+            position: relative;
+        }
+
+        /* Vertical Line */
+        .stream-line {
+            position: absolute;
+            left: 40px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+            z-index: 0;
+        }
+
+        /* Task Cards */
+        .task-card {
+            background: var(--card-bg);
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+            z-index: 1;
+            /* Fluid Animation */
+            transition: all 0.6s var(--fluid-ease);
+            transform-origin: top center;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            animation: popIn 0.5s var(--fluid-ease) forwards;
+        }
+
+        @keyframes popIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .task-time {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: bold;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .task-content { flex: 1; }
+        
+        .task-title { font-weight: bold; margin-bottom: 4px; }
+        .task-meta { font-size: 0.75rem; color: var(--muted); display: flex; gap: 8px; }
+
+        /* Status Colors */
+        .priority-high { border-left: 4px solid var(--secondary); }
+        .priority-normal { border-left: 4px solid var(--primary); }
+        .priority-low { border-left: 4px solid #4FD1C5; }
+
+        /* Current Task Highlight */
+        .task-card.is-current {
+            background: #F3F0FF;
+            border: 2px solid var(--primary);
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(108, 99, 255, 0.2);
+        }
+
+        /* Feedback Control (Bottom Sheet) */
+        .feedback-controls {
+            padding: 20px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .feedback-btn {
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-delay { background: #FED7D7; color: #C53030; }
+        .btn-complete { background: #C6F6D5; color: #2F855A; }
+        
+        .btn-delay:hover { background: #FEB2B2; transform: translateY(-2px); }
+        .btn-complete:hover { background: #9AE6B4; transform: translateY(-2px); }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: var(--muted);
+            margin-top: 50px;
+        }
+
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1 class="mb-3">スケジュール生成ツール（連続配置・表示集約）</h1>
 
-    <div class="row">
-      <div class="col-lg-5">
-        <div class="card mb-3">
-          <div class="card-header">固定タスク（必ずその時間に入る）</div>
-          <div class="card-body">
-            <form id="fixedForm" class="row g-2">
-              <div class="col-12">
-                <input class="form-control" id="fixedTitle" placeholder="タイトル" required>
-              </div>
-              <div class="col-6">
-                <input type="date" class="form-control" id="fixedDate">
-                <div class="form-text small-note">日付を入れないと「繰り返し」のみで週に展開。</div>
-              </div>
-              <div class="col-6">
-                <input type="time" class="form-control" id="fixedStart" value="09:00" required>
-              </div>
-              <div class="col-6">
-                <input type="number" class="form-control" id="fixedDur" placeholder="分（例：60）" min="1" value="60" required>
-              </div>
-              <div class="col-6">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="fixedRepeat">
-                  <label class="form-check-label" for="fixedRepeat">毎週同じ曜日に繰り返す</label>
-                </div>
-              </div>
-              <div class="col-12 text-end">
-                <button class="btn btn-primary" id="addFixed">追加</button>
-              </div>
-            </form>
-            <hr>
-            <div>
-              <h6>固定タスクリスト</h6>
-              <ul id="fixedList" class="list-group list-group-flush"></ul>
-            </div>
-          </div>
+<div class="app-container">
+    <header>
+        <h1>Fluid Planner</h1>
+        <p>AI Dynamic Scheduling</p>
+    </header>
+
+    <div class="input-area">
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="新しいタスクを入力..." />
         </div>
-
-        <div class="card mb-3">
-          <div class="card-header">普通のタスク（スケジュールで管理）</div>
-          <div class="card-body">
-            <form id="taskForm" class="row g-2">
-              <div class="col-12">
-                <input class="form-control" id="taskTitle" placeholder="タイトル" required>
-              </div>
-              <div class="col-6">
-                <input type="number" class="form-control" id="taskDur" placeholder="所要時間（分）" min="1" value="60" required>
-              </div>
-              <div class="col-6">
-                <input type="datetime-local" class="form-control" id="taskDeadline">
-                <div class="form-text small-note">期限を空にすると期限なし（ただし優先度で扱う）</div>
-              </div>
-              <div class="col-6">
-                <input type="number" class="form-control" id="taskImportance" placeholder="必要度（1〜10）" min="1" max="10" value="5" required>
-              </div>
-              <div class="col-6">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="taskContinuous" checked>
-                  <label class="form-check-label" for="taskContinuous">連続配置必須（分割不可）</label>
-                </div>
-              </div>
-              <div class="col-12 text-end">
-                <button class="btn btn-success" id="addTask">追加</button>
-              </div>
-            </form>
-            <hr>
-            <div>
-              <h6>タスクリスト</h6>
-              <ul id="taskList" class="list-group list-group-flush"></ul>
-            </div>
-          </div>
+        <div class="input-group">
+            <select id="durationInput">
+                <option value="15">15分</option>
+                <option value="30" selected>30分</option>
+                <option value="60">60分</option>
+                <option value="90">90分</option>
+            </select>
+            <select id="priorityInput">
+                <option value="normal">通常</option>
+                <option value="high">高優先 (AI優先)</option>
+                <option value="low">低優先</option>
+            </select>
         </div>
+        <button id="add-btn" onclick="addTask()">スケジュールに追加 (AI)</button>
+    </div>
 
-        <div class="card mb-3">
-          <div class="card-header">可処分時間（曜日ごと）</div>
-          <div class="card-body">
-            <div class="row g-2" id="availabilities"></div>
-            <div class="mt-2 text-end">
-              <button class="btn btn-outline-secondary" id="resetAvailability">デフォルトに戻す</button>
-            </div>
-          </div>
+    <div class="timeline-container">
+        <div class="stream-line"></div>
+        <div id="taskList">
+            <div class="empty-state">タスクを追加してください。<br>AIが最適な流れを作ります。</div>
         </div>
+    </div>
 
-        <div class="d-grid">
-          <button class="btn btn-lg btn-primary" id="generateBtn">スケジュール生成（この週）</button>
-        </div>
-
-      </div> <!-- col -->
-
-      <div class="col-lg-7">
-        <div class="card mb-3">
-          <div class="card-header">週ビュー（今日を含む7日）</div>
-          <div class="card-body calendar" id="calendarArea">
-            <div class="small-note mb-2">時間は30分スロットで内部処理。タスクは「連続配置必須」。</div>
-            <div id="calendarGrid" class="scroll-table"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">割り当て結果（タスクごとに集約して表示）</div>
-          <div class="card-body">
-            <div id="assignSummary"></div>
-          </div>
-        </div>
-
-      </div> <!-- col -->
-    </div> <!-- row -->
-  </div> <!-- container -->
+    <div class="feedback-controls">
+        <span style="font-size: 0.8rem; font-weight: bold; color: var(--muted);">AI Feedback:</span>
+        <button class="feedback-btn btn-delay" onclick="triggerDelay()">+15分 押し</button>
+        <button class="feedback-btn btn-complete" onclick="completeCurrent()">完了</button>
+    </div>
+</div>
 
 <script>
-const SLOT_MIN = 30; // minutes per slot
-const SLOTS_PER_DAY = 24 * 60 / SLOT_MIN;
+    // State
+    let tasks = [];
+    let baseTime = new Date(); 
+    // スタート時間を現在の直近の00分か30分に丸める
+    baseTime.setMinutes(baseTime.getMinutes() > 30 ? 30 : 0);
+    baseTime.setSeconds(0);
 
-let fixedTasks = []; // {id, title, date|null, startMin, durMin, repeatWeekly}
-let tasks = []; // {id,title,durMin,deadline|null (Date), importance, continuous:boolean}
-let avail = {}; // map weekday (0-6) -> {startMin, endMin}
+    // AI Logic Simulator
+    function runAIScheduler() {
+        // AIロジック: 
+        // 1. "High"優先度のタスクを先に持ってくる（単純なソート）
+        // 2. しかし、リストの最初のタスクが「現在進行中」の場合は動かさない
+        
+        const currentTask = tasks.length > 0 ? tasks[0] : null;
+        const waitingTasks = tasks.slice(1);
 
-function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
-function minutesFromTimeStr(t){ if(!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + m; }
-function timeStrFromMinutes(m){ const hh = Math.floor(m/60).toString().padStart(2,'0'); const mm = (m%60).toString().padStart(2,'0'); return hh + ':' + mm; }
-function slotIndexFromMinutes(min){ return Math.floor(min / SLOT_MIN); }
-function minutesFromSlotIndex(idx){ return idx * SLOT_MIN; }
+        // 優先度スコア: high=3, normal=2, low=1
+        const getScore = (p) => p === 'high' ? 3 : (p === 'normal' ? 2 : 1);
 
-function initAvailability(){
-  for(let d=0; d<7; d++){
-    if(d===0 || d===6) { avail[d] = {startMin: 10*60, endMin: 18*60}; }
-    else { avail[d] = {startMin: 9*60, endMin: 21*60}; }
-  }
-}
+        // ソート実行（AIが考えているフリ）
+        waitingTasks.sort((a, b) => getScore(b.priority) - getScore(a.priority));
 
-function renderAvailabilityControls(){
-  const container = document.getElementById('availabilities');
-  container.innerHTML = '';
-  const labels = ['日','月','火','水','木','金','土'];
-  for(let d=0; d<7; d++){
-    const col = document.createElement('div');
-    col.className = 'col-6';
-    col.innerHTML = `
-      <label class="form-label">${labels[d]}:</label>
-      <div class="input-group">
-        <input type="time" class="form-control avail-start" data-day="${d}" value="${timeStrFromMinutes(avail[d].startMin)}">
-        <span class="input-group-text">→</span>
-        <input type="time" class="form-control avail-end" data-day="${d}" value="${timeStrFromMinutes(avail[d].endMin)}">
-      </div>
-    `;
-    container.appendChild(col);
-  }
-  document.querySelectorAll('.avail-start, .avail-end').forEach(el=>{
-    el.addEventListener('change', e=>{
-      const day = Number(e.target.dataset.day);
-      const start = document.querySelector(`.avail-start[data-day="${day}"]`).value;
-      const end = document.querySelector(`.avail-end[data-day="${day}"]`).value;
-      const smin = minutesFromTimeStr(start);
-      const emin = minutesFromTimeStr(end);
-      if(emin <= smin){ alert('終了時刻は開始より後にしてください'); return; }
-      avail[day].startMin = smin; avail[day].endMin = emin;
-    });
-  });
-}
-
-function addFixedTask(obj){
-  fixedTasks.push({...obj, id: uid('fixed')});
-  renderFixedList();
-}
-function addTask(obj){
-  tasks.push({...obj, id: uid('task')});
-  renderTaskList();
-}
-
-function renderFixedList(){
-  const ul = document.getElementById('fixedList');
-  ul.innerHTML = '';
-  fixedTasks.forEach(f=>{
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-start';
-    const left = document.createElement('div');
-    left.innerHTML = `<div><strong>${f.title}</strong></div>
-      <div class="small-note">${f.date ? f.date : '(日付なし)'} ${timeStrFromMinutes(f.startMin)} - ${timeStrFromMinutes(f.startMin+f.durMin)} ${f.repeatWeekly? '（毎週）':''}</div>`;
-    const btns = document.createElement('div');
-    btns.innerHTML = `<button class="btn btn-sm btn-outline-danger me-1 btn-del-fixed" data-id="${f.id}">削除</button>`;
-    li.appendChild(left); li.appendChild(btns);
-    ul.appendChild(li);
-  });
-  document.querySelectorAll('.btn-del-fixed').forEach(b=>{
-    b.addEventListener('click', e=>{
-      const id = e.target.dataset.id;
-      fixedTasks = fixedTasks.filter(f=>f.id!==id);
-      renderFixedList();
-    });
-  });
-}
-function renderTaskList(){
-  const ul = document.getElementById('taskList');
-  ul.innerHTML = '';
-  tasks.forEach(t=>{
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-start';
-    const left = document.createElement('div');
-    left.innerHTML = `<div><strong>${t.title}</strong></div>
-      <div class="small-note">所要 ${t.durMin}分 ・ 期限 ${t.deadline? t.deadline.toLocaleString() : '(なし)'} ・ 必要度 ${t.importance} ・ ${t.continuous? '連続必須':''}</div>`;
-    const btns = document.createElement('div');
-    btns.innerHTML = `<button class="btn btn-sm btn-outline-danger me-1 btn-del-task" data-id="${t.id}">削除</button>`;
-    li.appendChild(left); li.appendChild(btns);
-    ul.appendChild(li);
-  });
-  document.querySelectorAll('.btn-del-task').forEach(b=>{
-    b.addEventListener('click', e=>{
-      const id = e.target.dataset.id;
-      tasks = tasks.filter(f=>f.id!==id);
-      renderTaskList();
-    });
-  });
-}
-
-function getWeekDates(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const arr = [];
-  for(let i=0;i<7;i++){
-    const d = new Date(today.getTime()); d.setDate(today.getDate()+i);
-    arr.push(d);
-  }
-  return arr;
-}
-
-function buildEmptyWeek(){
-  const weekDates = getWeekDates();
-  const week = [];
-  for(let i=0;i<7;i++){
-    const day = {
-      date: weekDates[i],
-      slots: new Array(SLOTS_PER_DAY).fill(null), // null = empty, 'blocked' = outside availability, or contains object {type:'fixed'|'assigned', ref:...}
-    };
-    const wd = weekDates[i].getDay();
-    const st = avail[wd].startMin;
-    const en = avail[wd].endMin;
-    for(let s=0;s<SLOTS_PER_DAY;s++){
-      const m = minutesFromSlotIndex(s);
-      if(m < st || m >= en){
-        day.slots[s] = {type:'blocked'};
-      }
-    }
-    week.push(day);
-  }
-  return week;
-}
-
-function addFixedsToWeek(week){
-  const collisions = [];
-  fixedTasks.forEach(f=>{
-    const placeDates = [];
-    if(f.date){
-      const fd = new Date(f.date + 'T00:00:00');
-      week.forEach(day=>{
-        const dstr = new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate()).getTime();
-        if(dstr === fd.getTime()){
-          placeDates.push(day.date);
-        }
-      });
-    } else if(f.repeatWeekly){
-      // if no date but repeat, place on matching weekday of today (simple heuristic)
-      const today = new Date(); placeDates.push(today);
-    }
-    placeDates.forEach(pdate=>{
-      const idx = week.findIndex(d=> d.date.getFullYear()===pdate.getFullYear() && d.date.getMonth()===pdate.getMonth() && d.date.getDate()===pdate.getDate());
-      if(idx>=0){
-        const startSlot = slotIndexFromMinutes(f.startMin);
-        const durSlots = Math.ceil(f.durMin / SLOT_MIN);
-        let conflict = false;
-        for(let s=startSlot; s<startSlot+durSlots; s++){
-          if(s<0 || s>=SLOTS_PER_DAY){ conflict = true; break; }
-          if(week[idx].slots[s] && week[idx].slots[s].type !== 'blocked'){ conflict = true; break; }
-        }
-        if(conflict){
-          collisions.push({task:f, date: week[idx].date});
+        // 再結合
+        if (currentTask) {
+            tasks = [currentTask, ...waitingTasks];
         } else {
-          for(let s=startSlot; s<startSlot+durSlots; s++){
-            week[idx].slots[s] = {type:'fixed', ref: f};
-          }
+            tasks = waitingTasks;
         }
-      }
-    });
-  });
-  return collisions;
-}
 
-function computeUrgency(deadlineDate){
-  const now = new Date();
-  if(!deadlineDate) return 0;
-  const diffMs = deadlineDate.getTime() - now.getTime();
-  const diffDays = diffMs / (1000*60*60*24);
-  if(diffDays <= 0) return 1e6; // already overdue => very urgent
-  return 1 / diffDays;
-}
+        // 時間の再計算 (Recalculate Timeline)
+        let currentTimeCursor = new Date(baseTime);
+        
+        tasks.forEach((task, index) => {
+            task.startTime = new Date(currentTimeCursor);
+            // 時間を進める
+            currentTimeCursor.setMinutes(currentTimeCursor.getMinutes() + parseInt(task.duration));
+            task.endTime = new Date(currentTimeCursor);
+        });
 
-/*
-  重要な変更点:
-  - タスクは「連続配置必須(分割不可)」モードをサポート
-  - placeTaskIntoSlots を「連続で requiredSlots の空きを探して割当」する実装に変更
-  - 割当後のサマリ表示を「タスク毎に結合」して1件にまとめる
-*/
-function placeTaskIntoSlots_contiguous(week, task, latestAllowedIndex){
-  const requiredSlots = Math.ceil(task.durMin / SLOT_MIN);
-  // iterate days from start to latestAllowedIndex.dayIndex
-  for(let d=0; d<week.length; d++){
-    if(latestAllowedIndex && d > latestAllowedIndex.dayIndex) break;
-    const day = week[d];
-    const lastSlotIdx = (latestAllowedIndex && d===latestAllowedIndex.dayIndex) ? latestAllowedIndex.slotIndex : SLOTS_PER_DAY-1;
-    // scan for a contiguous run of requiredSlots null slots
-    let run = 0;
-    for(let s=0; s<=lastSlotIdx; s++){
-      if(day.slots[s] === null){
-        run++;
-        if(run === requiredSlots){
-          // assign from s - requiredSlots + 1  to s
-          const startSlot = s - requiredSlots + 1;
-          for(let k=startSlot; k<=s; k++){
-            day.slots[k] = {type:'assigned', ref: task};
-          }
-          return {remaining:0, placedSegments:[{dayIndex:d, startSlot:startSlot, slots: requiredSlots}]};
+        renderTasks();
+    }
+
+    // Add Task
+    function addTask() {
+        const titleInput = document.getElementById('taskInput');
+        const durationInput = document.getElementById('durationInput');
+        const priorityInput = document.getElementById('priorityInput');
+
+        if (!titleInput.value) return;
+
+        const newTask = {
+            id: Date.now(),
+            title: titleInput.value,
+            duration: parseInt(durationInput.value),
+            priority: priorityInput.value,
+            startTime: null,
+            endTime: null
+        };
+
+        tasks.push(newTask);
+        
+        // 入力クリア
+        titleInput.value = '';
+        
+        // AIスケジュール実行
+        runAIScheduler();
+    }
+
+    // Render Logic
+    function renderTasks() {
+        const container = document.getElementById('taskList');
+        container.innerHTML = '';
+
+        if (tasks.length === 0) {
+            container.innerHTML = '<div class="empty-state">タスクを追加してください。<br>AIが最適な流れを作ります。</div>';
+            return;
         }
-      } else {
-        run = 0;
-      }
+
+        tasks.forEach((task, index) => {
+            const isCurrent = index === 0;
+            const timeStr = formatTime(task.startTime);
+            const endTimeStr = formatTime(task.endTime);
+            
+            const div = document.createElement('div');
+            div.className = `task-card priority-${task.priority} ${isCurrent ? 'is-current' : ''}`;
+            
+            div.innerHTML = `
+                <div class="task-time">
+                    <div>${timeStr}</div>
+                    <div style="font-size:0.6rem; opacity:0.6;">${endTimeStr}</div>
+                </div>
+                <div class="task-content">
+                    <div class="task-title">${task.title} ${isCurrent ? '🔥' : ''}</div>
+                    <div class="task-meta">
+                        <span>⏱ ${task.duration}分</span>
+                        <span>${task.priority === 'high' ? '⚡ 優先' : ''}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
     }
-  }
-  // not found contiguous region
-  return {remaining: task.durMin, placedSegments:[]};
-}
 
-function generateSchedule(){
-  const week = buildEmptyWeek();
-  const summary = {collisions:[], assigned:[], unassigned:[]};
-
-  // 1) place fixed tasks
-  summary.collisions = addFixedsToWeek(week);
-
-  // 2) prepare task list copies with computed priority
-  const now = new Date();
-  const weekStart = week[0].date; weekStart.setHours(0,0,0,0);
-  const weekEnd = new Date(week[6].date.getTime()); weekEnd.setHours(23,59,59,999);
-
-  const tasksCopy = tasks.map(t=>{
-    const deadline = t.deadline ? new Date(t.deadline.getTime()) : null;
-    const urgency = computeUrgency(deadline);
-    const priority = t.importance * (1 + urgency * 10);
-    let latestAllowedIndex = null;
-    if(deadline){
-      if(deadline < weekStart) {
-        latestAllowedIndex = {dayIndex: -1, slotIndex:-1};
-      } else {
-        const clamped = new Date(Math.min(deadline.getTime(), weekEnd.getTime()));
-        const dayIndex = Math.floor((clamped.getTime() - weekStart.getTime()) / (1000*60*60*24));
-        const slot = slotIndexFromMinutes(clamped.getHours()*60 + clamped.getMinutes());
-        latestAllowedIndex = {dayIndex: Math.max(0, Math.min(6, dayIndex)), slotIndex: slot};
-      }
-    } else {
-      latestAllowedIndex = {dayIndex:6, slotIndex: SLOTS_PER_DAY-1};
+    // Helper: Time Format
+    function formatTime(date) {
+        return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
     }
-    return {...t, deadline, urgency, priority, latestAllowedIndex};
-  });
 
-  const withDeadline = tasksCopy.filter(t=>t.deadline).sort((a,b)=>{
-    if(a.deadline.getTime() !== b.deadline.getTime()) return a.deadline - b.deadline;
-    return b.priority - a.priority;
-  });
-  const withoutDeadline = tasksCopy.filter(t=>!t.deadline).sort((a,b)=> b.importance - a.importance);
+    // Feedback: Delay (+15min)
+    function triggerDelay() {
+        if (tasks.length === 0) return;
 
-  // 3) place deadline tasks (contiguous or allow split? use task.continuous to decide)
-  for(const t of withDeadline){
-    let latest = t.latestAllowedIndex;
-    if(latest.dayIndex < 0) latest = {dayIndex:6, slotIndex:SLOTS_PER_DAY-1};
-    let res;
-    if(t.continuous){
-      res = placeTaskIntoSlots_contiguous(week, t, latest);
-    } else {
-      // fallback to original splitting placement if continuous=false
-      res = placeTaskIntoSlots_split(week, t, latest);
+        // 現在のタスク（先頭）の時間を延ばす
+        tasks[0].duration += 15;
+        
+        // AI再計算（後続のタスクが自動でずれる）
+        runAIScheduler();
+
+        // ビジュアルフィードバック（本来はトースト通知など）
+        const btn = document.querySelector('.btn-delay');
+        const originalText = btn.innerText;
+        btn.innerText = "再計算中...";
+        setTimeout(() => btn.innerText = originalText, 500);
     }
-    if(res.remaining > 0){
-      summary.unassigned.push({task:t, remaining: res.remaining});
-    } else {
-      summary.assigned.push({task:t, segments:res.placedSegments});
-    }
-  }
 
-  // 4) place non-deadline tasks
-  for(const t of withoutDeadline){
-    const latest = {dayIndex:6, slotIndex:SLOTS_PER_DAY-1};
-    let res;
-    if(t.continuous){
-      res = placeTaskIntoSlots_contiguous(week, t, latest);
-    } else {
-      res = placeTaskIntoSlots_split(week, t, latest);
-    }
-    if(res.remaining > 0){
-      summary.unassigned.push({task:t, remaining: res.remaining});
-    } else {
-      summary.assigned.push({task:t, segments:res.placedSegments});
-    }
-  }
+    // Feedback: Complete
+    function completeCurrent() {
+        if (tasks.length === 0) return;
 
-  return {week, summary};
-}
-
-// original splitting placement kept as fallback (unchanged)
-function placeTaskIntoSlots_split(week, task, latestAllowedIndex){
-  let remaining = task.durMin;
-  const placedSegments = [];
-  for(let d=0; d<week.length && remaining>0; d++){
-    if(latestAllowedIndex && d > latestAllowedIndex.dayIndex) break;
-    const day = week[d];
-    const lastSlotIdx = (latestAllowedIndex && d===latestAllowedIndex.dayIndex) ? latestAllowedIndex.slotIndex : SLOTS_PER_DAY-1;
-    for(let s=0; s<=lastSlotIdx && remaining>0; ){
-      while(s<=lastSlotIdx && week[d].slots[s] !== null) s++;
-      if(s>lastSlotIdx) break;
-      let e = s;
-      while(e<=lastSlotIdx && week[d].slots[e] === null) e++;
-      const regionSlots = e - s;
-      const regionMinutes = regionSlots * SLOT_MIN;
-      const takeMin = Math.min(regionMinutes, remaining);
-      const takeSlots = Math.ceil(takeMin / SLOT_MIN);
-      for(let ss=s; ss<s+takeSlots; ss++){
-        week[d].slots[ss] = {type:'assigned', ref: task};
-      }
-      placedSegments.push({dayIndex:d, startSlot:s, slots: takeSlots});
-      remaining -= takeSlots * SLOT_MIN;
-      s = e;
-    }
-  }
-  return {remaining: Math.max(0, remaining), placedSegments};
-}
-
-function renderCalendar(week, summary){
-  const container = document.getElementById('calendarGrid');
-  container.innerHTML = '';
-  const labels = ['日','月','火','水','木','金','土'];
-  const header = document.createElement('div');
-  header.className = 'd-flex';
-  header.style.minWidth = '800px';
-  week.forEach((day,i)=>{
-    const h = document.createElement('div');
-    h.style.flex = '1 0 160px';
-    h.className = 'border text-center p-1';
-    h.innerHTML = `<strong>${labels[day.date.getDay()]}</strong><br>${day.date.getMonth()+1}/${day.date.getDate()}`;
-    header.appendChild(h);
-  });
-  container.appendChild(header);
-
-  // For visual clarity we will still draw per-slot grid, but summary (下) will combine segments into single entries per task.
-  for(let s=0; s<SLOTS_PER_DAY; s++){
-    const row = document.createElement('div');
-    row.className = 'd-flex';
-    row.style.minWidth = '800px';
-    const timeLabel = document.createElement('div');
-    timeLabel.className = 'slot-time p-1';
-    timeLabel.innerText = timeStrFromMinutes(minutesFromSlotIndex(s));
-    const rowCells = document.createElement('div');
-    rowCells.className = 'd-flex flex-grow-1';
-    rowCells.style.width = 'calc(100% - 60px)';
-    week.forEach((day,i)=>{
-      const cell = document.createElement('div');
-      cell.style.flex = '1 0 160px';
-      cell.className = 'slot';
-      const slot = day.slots[s];
-      if(slot === null){
-        cell.innerHTML = '';
-      } else if(slot.type === 'blocked'){
-        cell.innerHTML = '<div class="small-note">—</div>';
-      } else if(slot.type === 'fixed'){
-        cell.classList.add('task-fixed');
-        cell.innerHTML = `<div><strong>${slot.ref.title}</strong></div><div class="small-note">固定</div>`;
-      } else if(slot.type === 'assigned'){
-        cell.classList.add('task-assigned');
-        cell.innerHTML = `<div><strong>${slot.ref.title}</strong></div><div class="small-note">自動割当</div>`;
-      }
-      // click shows details
-      cell.addEventListener('click', ()=>{
-        if(slot && (slot.type === 'fixed' || slot.type === 'assigned')){
-          alert(`${slot.ref.title}\n所要: ${slot.ref.durMin ?? '(固定)'}分\n${slot.type==='fixed' ? '固定タスク' : 'スケジュール割当'}`);
+        // アニメーション用に要素を取得して消す演出（簡易的）
+        const cards = document.querySelectorAll('.task-card');
+        if(cards[0]) {
+            cards[0].style.transform = "translateX(100px)";
+            cards[0].style.opacity = "0";
         }
-      });
-      rowCells.appendChild(cell);
+
+        setTimeout(() => {
+            // タスク削除
+            tasks.shift();
+            // 開始時間を現在時刻にリセット（次のタスクを今から始める）
+            baseTime = new Date();
+            // 分を丸める
+            let m = baseTime.getMinutes();
+            baseTime.setMinutes(m + (5 - m % 5)); // 5分切り上げなど
+
+            runAIScheduler();
+        }, 300);
+    }
+    
+    // Enterキーで追加
+    document.getElementById('taskInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') addTask();
     });
-    row.appendChild(timeLabel);
-    row.appendChild(rowCells);
-    container.appendChild(row);
-  }
 
-  // サマリをタスクごとに集約して表示（ここが「30分ごとにリストが分かれる問題」を解決）
-  const sumDiv = document.getElementById('assignSummary');
-  sumDiv.innerHTML = '';
-
-  // Map task id -> merged segments (merge contiguous segments on same day if present)
-  const taskMap = new Map();
-
-  // From summary.assigned (each entry has task, segments[])
-  summary.assigned.forEach(entry=>{
-    const t = entry.task;
-    if(!taskMap.has(t.id)) taskMap.set(t.id, {task:t, segments: []});
-    const containerObj = taskMap.get(t.id);
-    // append segments
-    entry.segments.forEach(seg => containerObj.segments.push(seg));
-  });
-
-  // Also check assigned slots in week for any assigned that perhaps weren't in summary.assigned (defensive)
-  // (But normally summary.assigned covers them.)
-
-  // Now for each task, merge segments that are contiguous on same day into a larger block
-  const mergedList = [];
-  taskMap.forEach(({task, segments})=>{
-    // sort segments by dayIndex then startSlot
-    segments.sort((a,b)=>{
-      if(a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
-      return a.startSlot - b.startSlot;
-    });
-    const merged = [];
-    segments.forEach(seg=>{
-      if(merged.length===0) merged.push({...seg});
-      else {
-        const last = merged[merged.length-1];
-        if(seg.dayIndex === last.dayIndex && seg.startSlot === last.startSlot + last.slots){
-          // contiguous on same day -> extend
-          last.slots += seg.slots;
-        } else {
-          merged.push({...seg});
-        }
-      }
-    });
-    mergedList.push({task, merged});
-  });
-
-  // Build HTML summary: one block per merged segment, but grouped under task header
-  let html = '';
-  if(summary.collisions.length) {
-    html += `<div class="alert alert-warning">固定タスク配置で衝突がありました: ${summary.collisions.length}件</div>`;
-  }
-  if(mergedList.length === 0) html += `<div>割当済みのタスクはありません。</div>`;
-  mergedList.forEach(item=>{
-    html += `<div class="mb-2"><h6>${item.task.title}（所要 ${item.task.durMin}分）</h6>`;
-    item.merged.forEach(seg=>{
-      const day = week[seg.dayIndex].date;
-      const startMin = minutesFromSlotIndex(seg.startSlot);
-      const endMin = minutesFromSlotIndex(seg.startSlot + seg.slots);
-      const startStr = `${day.getMonth()+1}/${day.getDate()} ${timeStrFromMinutes(startMin)}`;
-      const endStr = `${day.getMonth()+1}/${day.getDate()} ${timeStrFromMinutes(endMin)}`;
-      html += `<div class="block-summary">${startStr} 〜 ${endStr}（${seg.slots * SLOT_MIN}分）</div>`;
-    });
-    html += `</div>`;
-  });
-
-  if(summary.unassigned.length){
-    html += `<div class="mt-2"><strong>未割当（時間不足）:</strong><ul>`;
-    summary.unassigned.forEach(u=>{
-      html += `<li>${u.task.title} — 残り ${u.remaining} 分</li>`;
-    });
-    html += `</ul></div>`;
-  }
-
-  sumDiv.innerHTML = html;
-}
-
-/////////////////////
-// Event handlers & init
-/////////////////////
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  initAvailability();
-  renderAvailabilityControls();
-  renderFixedList();
-  renderTaskList();
-
-  document.getElementById('addFixed').addEventListener('click', e=>{
-    e.preventDefault();
-    const title = document.getElementById('fixedTitle').value.trim();
-    const date = document.getElementById('fixedDate').value || null;
-    const start = document.getElementById('fixedStart').value;
-    const dur = Number(document.getElementById('fixedDur').value);
-    const repeat = document.getElementById('fixedRepeat').checked;
-    if(!title || !start || !dur) { alert('入力を確認してください'); return; }
-    addFixedTask({title, date, startMin: minutesFromTimeStr(start), durMin: dur, repeatWeekly: repeat});
-    document.getElementById('fixedForm').reset();
-  });
-
-  document.getElementById('addTask').addEventListener('click', e=>{
-    e.preventDefault();
-    const title = document.getElementById('taskTitle').value.trim();
-    const dur = Number(document.getElementById('taskDur').value);
-    const dl = document.getElementById('taskDeadline').value;
-    const imp = Number(document.getElementById('taskImportance').value);
-    const cont = document.getElementById('taskContinuous').checked;
-    if(!title || !dur || !imp){ alert('入力を確認してください'); return; }
-    const deadline = dl ? new Date(dl) : null;
-    addTask({title, durMin: dur, deadline, importance: imp, continuous: cont});
-    document.getElementById('taskForm').reset();
-  });
-
-  document.getElementById('resetAvailability').addEventListener('click', e=>{
-    e.preventDefault();
-    initAvailability(); renderAvailabilityControls();
-  });
-
-  document.getElementById('generateBtn').addEventListener('click', e=>{
-    e.preventDefault();
-    const res = generateSchedule();
-    renderCalendar(res.week, res.summary);
-  });
-
-  // initial empty calendar
-  const empty = buildEmptyWeek();
-  renderCalendar(empty, {collisions:[], assigned:[], unassigned:[]});
-});
 </script>
 
 </body>
