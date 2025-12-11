@@ -3,387 +3,546 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluid Planner Prototype</title>
+    <title>Fluid Planner - Complete Prototype</title>
     <style>
         :root {
-            --primary: #6C63FF;
-            --secondary: #FF6584;
-            --bg: #F0F4F8;
-            --card-bg: #FFFFFF;
-            --text: #2D3748;
-            --muted: #A0AEC0;
-            --fluid-ease: cubic-bezier(0.25, 1, 0.5, 1);
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --accent: #F472B6;
+            --bg: #F3F4F6;
+            --card: #FFFFFF;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+            --danger: #EF4444;
+            --success: #10B981;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             background: var(--bg);
-            color: var(--text);
+            color: var(--text-main);
             margin: 0;
             display: flex;
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
             padding: 20px;
+            box-sizing: border-box;
         }
 
-        .app-container {
+        /* Phone Frame */
+        .phone-frame {
             width: 100%;
             max-width: 400px;
-            background: #fff;
-            border-radius: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: var(--bg); /* 背景色と合わせる */
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             position: relative;
+            height: 100%;
+            max-height: 850px;
+            border: 8px solid #111;
         }
 
         /* Header */
         header {
-            padding: 24px;
-            background: linear-gradient(135deg, #6C63FF 0%, #a18aff 100%);
-            color: white;
-        }
-
-        h1 { margin: 0; font-size: 1.5rem; }
-        p { margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem; }
-
-        /* Input Area */
-        .input-area {
-            padding: 20px;
-            background: #fff;
-            border-bottom: 1px solid #eee;
+            padding: 20px 24px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
             z-index: 10;
-        }
-
-        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        
-        input, select {
-            padding: 12px;
-            border: 2px solid #eee;
-            border-radius: 12px;
-            font-size: 14px;
-            width: 100%;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        input:focus { border-color: var(--primary); }
-
-        button#add-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        button#add-btn:active { transform: scale(0.98); }
-
-        /* Timeline (Stream) */
-        .timeline-container {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: linear-gradient(to bottom, #fff 0%, #f7f9fc 100%);
-            position: relative;
-        }
-
-        /* Vertical Line */
-        .stream-line {
-            position: absolute;
-            left: 40px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #e2e8f0;
-            z-index: 0;
-        }
-
-        /* Task Cards */
-        .task-card {
-            background: var(--card-bg);
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #eee;
             display: flex;
-            align-items: center;
-            gap: 15px;
-            position: relative;
-            z-index: 1;
-            /* Fluid Animation */
-            transition: all 0.6s var(--fluid-ease);
-            transform-origin: top center;
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-            animation: popIn 0.5s var(--fluid-ease) forwards;
-        }
-
-        @keyframes popIn {
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .task-time {
-            font-size: 0.8rem;
-            color: var(--muted);
-            font-weight: bold;
-            min-width: 45px;
-            text-align: right;
-        }
-
-        .task-content { flex: 1; }
-        
-        .task-title { font-weight: bold; margin-bottom: 4px; }
-        .task-meta { font-size: 0.75rem; color: var(--muted); display: flex; gap: 8px; }
-
-        /* Status Colors */
-        .priority-high { border-left: 4px solid var(--secondary); }
-        .priority-normal { border-left: 4px solid var(--primary); }
-        .priority-low { border-left: 4px solid #4FD1C5; }
-
-        /* Current Task Highlight */
-        .task-card.is-current {
-            background: #F3F0FF;
-            border: 2px solid var(--primary);
-            transform: scale(1.02);
-            box-shadow: 0 8px 20px rgba(108, 99, 255, 0.2);
-        }
-
-        /* Feedback Control (Bottom Sheet) */
-        .feedback-controls {
-            padding: 20px;
-            background: #fff;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
             justify-content: space-between;
             align-items: center;
         }
+        h1 { margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--primary); }
+        .current-time-display { font-size: 0.9rem; font-weight: 600; color: var(--text-sub); }
 
-        .feedback-btn {
-            padding: 10px 16px;
-            border-radius: 20px;
+        /* Timeline */
+        .timeline-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+            scrollbar-width: none; /* Firefox */
+        }
+        .timeline-container::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
+
+        /* Tasks */
+        .task {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            position: relative;
+            border-left: 4px solid transparent;
+        }
+        .task.priority-high { border-left-color: var(--danger); }
+        .task.priority-normal { border-left-color: var(--primary); }
+        .task.priority-low { border-left-color: var(--success); }
+        .task.priority-fixed { border-left-color: var(--text-sub); background: #F9FAFB; }
+
+        .task.is-active {
+            background: #EEF2FF;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.15);
+        }
+        .task.will-remove { opacity: 0.4; text-decoration: line-through; transform: scale(0.95); }
+        .task.will-change { animation: pulseHighlight 1.5s infinite; }
+
+        @keyframes pulseHighlight {
+            0% { background: var(--card); }
+            50% { background: #FEF3C7; }
+            100% { background: var(--card); }
+        }
+
+        .time-col { font-size: 0.75rem; color: var(--text-sub); text-align: right; min-width: 45px; }
+        .info-col { flex: 1; }
+        .task-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .task-meta { font-size: 0.75rem; color: var(--text-sub); display: flex; gap: 8px; align-items: center;}
+        .tag { padding: 2px 6px; background: #F3F4F6; border-radius: 4px; }
+
+        /* Bottom FABs */
+        .fab-container {
+            position: absolute;
+            bottom: 30px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 20;
+            pointer-events: none; /* ボタン以外はクリック透過 */
+        }
+        .fab-btn {
+            pointer-events: auto;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
             border: none;
-            font-size: 0.85rem;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.2s;
         }
+        .fab-btn:active { transform: scale(0.9); }
+        .btn-ai { background: var(--text-main); }
+        .btn-add { background: var(--primary); }
 
-        .btn-delay { background: #FED7D7; color: #C53030; }
-        .btn-complete { background: #C6F6D5; color: #2F855A; }
+        /* Modals (Overlays) */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            display: none; /* 初期非表示 */
+            align-items: flex-end; /* 下から出す */
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal-panel {
+            width: 100%;
+            background: #fff;
+            border-radius: 30px 30px 0 0;
+            padding: 30px 24px 40px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            animation: slideUp 0.3s ease-out;
+            box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
-        .btn-delay:hover { background: #FEB2B2; transform: translateY(-2px); }
-        .btn-complete:hover { background: #9AE6B4; transform: translateY(-2px); }
+        .modal-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .close-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-sub); cursor: pointer; }
 
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            color: var(--muted);
-            margin-top: 50px;
+        /* Input Form Styles */
+        .input-group { margin-bottom: 16px; }
+        .input-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-sub); }
+        .input-field {
+            width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 12px;
+            font-size: 1rem; outline: none; transition: border-color 0.3s; box-sizing: border-box;
         }
+        .input-field:focus { border-color: var(--primary); }
+        .select-row { display: flex; gap: 12px; }
+        .btn-block {
+            width: 100%; padding: 14px; background: var(--primary); color: white;
+            border: none; border-radius: 12px; font-weight: 600; font-size: 1rem; cursor: pointer;
+        }
+
+        /* AI Feedback Styles (from v2) */
+        .ai-header-content { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .ai-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1, #a855f7); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; }
+        .ai-message { font-size: 1.1rem; font-weight: 700; line-height: 1.4; }
+        .feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .feedback-option {
+            background: #F9FAFB; border: 2px solid transparent; padding: 16px;
+            border-radius: 16px; text-align: center; cursor: pointer; transition: all 0.2s;
+        }
+        .feedback-option:hover { background: #EEF2FF; border-color: #C7D2FE; }
+        .emoji { font-size: 1.5rem; display: block; margin-bottom: 8px; }
+        .label { font-size: 0.85rem; font-weight: 600; }
+        .proposal-card { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px; margin-top: 20px; font-size: 0.9rem; }
+        .proposal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-accept { flex: 1; padding: 12px; background: var(--text-main); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .btn-cancel { padding: 12px 20px; background: transparent; color: var(--text-sub); border: none; cursor: pointer; }
 
     </style>
 </head>
 <body>
 
-<div class="app-container">
+<div class="phone-frame">
     <header>
         <h1>Fluid Planner</h1>
-        <p>AI Dynamic Scheduling</p>
+        <div class="current-time-display" id="currentTimeDisplay">13:00 Now</div>
     </header>
 
-    <div class="input-area">
-        <div class="input-group">
-            <input type="text" id="taskInput" placeholder="新しいタスクを入力..." />
+    <div class="timeline-container" id="timeline">
         </div>
-        <div class="input-group">
-            <select id="durationInput">
-                <option value="15">15分</option>
-                <option value="30" selected>30分</option>
-                <option value="60">60分</option>
-                <option value="90">90分</option>
-            </select>
-            <select id="priorityInput">
-                <option value="normal">通常</option>
-                <option value="high">高優先 (AI優先)</option>
-                <option value="low">低優先</option>
-            </select>
-        </div>
-        <button id="add-btn" onclick="addTask()">スケジュールに追加 (AI)</button>
+
+    <div class="fab-container">
+        <button class="fab-btn btn-ai" onclick="openAIModal()">✨</button>
+        <button class="fab-btn btn-add" onclick="openAddTaskModal()">➕</button>
     </div>
 
-    <div class="timeline-container">
-        <div class="stream-line"></div>
-        <div id="taskList">
-            <div class="empty-state">タスクを追加してください。<br>AIが最適な流れを作ります。</div>
+    <div class="modal-overlay" id="addTaskModal">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <span>新しいタスクを追加</span>
+                <button class="close-btn" onclick="closeModal('addTaskModal')">✕</button>
+            </div>
+            <div class="input-group">
+                <label class="input-label">タスク名</label>
+                <input type="text" id="taskTitleInput" class="input-field" placeholder="例: 企画書作成">
+            </div>
+            <div class="select-row input-group">
+                <div style="flex:1">
+                    <label class="input-label">所要時間</label>
+                    <select id="taskDurationInput" class="input-field">
+                        <option value="15">15分</option>
+                        <option value="30" selected>30分</option>
+                        <option value="45">45分</option>
+                        <option value="60">60分</option>
+                        <option value="90">90分</option>
+                    </select>
+                </div>
+                <div style="flex:1">
+                    <label class="input-label">優先度 (AIが考慮します)</label>
+                    <select id="taskPriorityInput" class="input-field">
+                        <option value="high">⚡ 高 (割り込み)</option>
+                        <option value="normal" selected>通常</option>
+                        <option value="low">低 (後回しOK)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-block" onclick="addNewTask()">スケジュールに追加</button>
         </div>
     </div>
 
-    <div class="feedback-controls">
-        <span style="font-size: 0.8rem; font-weight: bold; color: var(--muted);">AI Feedback:</span>
-        <button class="feedback-btn btn-delay" onclick="triggerDelay()">+15分 押し</button>
-        <button class="feedback-btn btn-complete" onclick="completeCurrent()">完了</button>
+    <div class="modal-overlay" id="aiModal">
+        <div class="modal-panel">
+            <div class="ai-header-content">
+                <div class="ai-avatar">🤖</div>
+                <div class="ai-message" id="aiMessage">今の状況を教えてください。<br>スケジュールを調整します。</div>
+            </div>
+
+            <div class="feedback-grid" id="feedbackOptions">
+                <div class="feedback-option" onclick="generateProposal('stuck')">
+                    <span class="emoji">🐌</span><span class="label">時間がかかってる</span>
+                </div>
+                <div class="feedback-option" onclick="generateProposal('tired')">
+                    <span class="emoji">😫</span><span class="label">疲れた・休憩したい</span>
+                </div>
+                <div class="feedback-option" onclick="generateProposal('done')">
+                    <span class="emoji">✅</span><span class="label">完了！次へ</span>
+                </div>
+                 </div>
+
+            <div id="proposalArea" style="display:none;">
+                <div class="proposal-card" id="proposalText"></div>
+                <div class="proposal-actions">
+                    <button class="btn-cancel" onclick="resetAIModal()">戻る</button>
+                    <button class="btn-accept" onclick="applyProposal()">変更を適用</button>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeModal('aiModal')" style="position:absolute; top:20px; right:24px;">✕</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // State
-    let tasks = [];
-    let baseTime = new Date(); 
-    // スタート時間を現在の直近の00分か30分に丸める
-    baseTime.setMinutes(baseTime.getMinutes() > 30 ? 30 : 0);
-    baseTime.setSeconds(0);
+    // ================= State Management =================
+    let tasks = [
+        { id: 1, title: "チームMTG", duration: 30, priority: "fixed", type: "meeting" },
+        { id: 2, title: "企画書ドラフト作成", duration: 60, priority: "high", type: "work" },
+        { id: 3, title: "メールチェック", duration: 30, priority: "low", type: "admin" },
+        { id: 4, title: "デザインレビュー", duration: 45, priority: "normal", type: "creative" }
+    ];
 
-    // AI Logic Simulator
-    function runAIScheduler() {
-        // AIロジック: 
-        // 1. "High"優先度のタスクを先に持ってくる（単純なソート）
-        // 2. しかし、リストの最初のタスクが「現在進行中」の場合は動かさない
-        
-        const currentTask = tasks.length > 0 ? tasks[0] : null;
-        const waitingTasks = tasks.slice(1);
+    // アプリの現在時刻（デモ用固定設定）
+    let currentAppTime = new Date();
+    currentAppTime.setHours(13, 0, 0, 0);
 
-        // 優先度スコア: high=3, normal=2, low=1
-        const getScore = (p) => p === 'high' ? 3 : (p === 'normal' ? 2 : 1);
+    let pendingProposalTasks = null; // 提案適用待ちのタスクリスト
 
-        // ソート実行（AIが考えているフリ）
-        waitingTasks.sort((a, b) => getScore(b.priority) - getScore(a.priority));
+    // ================= Core Logic: Scheduler & Renderer =================
 
-        // 再結合
-        if (currentTask) {
-            tasks = [currentTask, ...waitingTasks];
-        } else {
-            tasks = waitingTasks;
+    /**
+     * スケジュール計算の核となる関数。
+     * タスクリストを受け取り、優先度で並び替え、時間を割り当てて返す。
+     * @param {Array} taskList 計算対象のタスクリスト
+     * @param {Date} startTime 開始時間
+     * @param {boolean} skipSort すでにソート済みの場合（AI提案時など）はtrue
+     */
+    function calculateSchedule(taskList, startTime, skipSort = false) {
+        let calculatedTasks = [...taskList]; // コピーを作成
+
+        if (!skipSort) {
+            // 1. 固定(fixed)タスクとそれ以外を分ける
+            const fixedTasks = calculatedTasks.filter(t => t.priority === 'fixed');
+            let movableTasks = calculatedTasks.filter(t => t.priority !== 'fixed');
+
+            // 2. 動かせるタスクを優先度順にソート (high > normal > low)
+            const score = p => p === 'high' ? 3 : (p === 'normal' ? 2 : 1);
+            movableTasks.sort((a, b) => score(b.priority) - score(a.priority));
+
+            // 3. 再結合（単純化のため、固定タスクの後に動的タスクを繋げる）
+            // ※実用レベルでは、固定タスクの「合間」に動的タスクを埋めるロジックが必要だが、
+            // このプロトタイプでは「固定タスクを先にこなし、その後優先度順」とする。
+            calculatedTasks = [...fixedTasks, ...movableTasks];
         }
 
-        // 時間の再計算 (Recalculate Timeline)
-        let currentTimeCursor = new Date(baseTime);
-        
-        tasks.forEach((task, index) => {
-            task.startTime = new Date(currentTimeCursor);
-            // 時間を進める
-            currentTimeCursor.setMinutes(currentTimeCursor.getMinutes() + parseInt(task.duration));
-            task.endTime = new Date(currentTimeCursor);
+        // 4. 時間割り当て
+        let timeCursor = new Date(startTime);
+        calculatedTasks.forEach(task => {
+            if (task.removed) return; // 削除予定のタスクは時間計算から除外
+            task.start = new Date(timeCursor);
+            timeCursor.setMinutes(timeCursor.getMinutes() + task.duration);
+            task.end = new Date(timeCursor);
         });
 
-        renderTasks();
+        return calculatedTasks;
     }
 
-    // Add Task
-    function addTask() {
-        const titleInput = document.getElementById('taskInput');
-        const durationInput = document.getElementById('durationInput');
-        const priorityInput = document.getElementById('priorityInput');
+    /**
+     * タイムラインを描画する。
+     * @param {Array} taskList 描画するタスクリスト（計算済みであること）
+     * @param {Object} previewOptions プレビュー時のオプション { highlightIds: [], dimOthers: bool }
+     */
+    function renderTimeline(taskList, previewOptions = {}) {
+        const container = document.getElementById('timeline');
+        container.innerHTML = '';
 
-        if (!titleInput.value) return;
+        const { highlightIds = [], dimOthers = false } = previewOptions;
+
+        taskList.forEach((task, index) => {
+            if (task.removed && !previewOptions.showRemoved) return; // 通常は削除済みを表示しない
+
+            const isActive = index === 0 && !task.removed;
+            let className = `task priority-${task.priority}`;
+            if (isActive) className += ' is-active';
+            if (task.removed) className += ' will-remove';
+            if (highlightIds.includes(task.id)) className += ' will-change';
+            if (dimOthers && !highlightIds.includes(task.id) && !task.removed) className += ' style="opacity:0.6;"'; // 変更以外を薄く
+
+            const div = document.createElement('div');
+            div.className = className;
+            if (dimOthers && !highlightIds.includes(task.id) && !task.removed) div.style.opacity = '0.6';
+
+            div.innerHTML = `
+                <div class="time-col">
+                    <div>${formatTime(task.start)}</div>
+                    <div style="opacity:0.6">${formatTime(task.end)}</div>
+                </div>
+                <div class="info-col">
+                    <div class="task-title">${task.title} ${task.priority === 'fixed' ? '🔒' : ''}</div>
+                    <div class="task-meta">
+                        <span class="tag">⏱ ${task.duration}分</span>
+                        ${task.type ? `<span class="tag">${task.type}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        updateCurrentTimeDisplay();
+    }
+
+
+    // ================= Feature: Add Task =================
+
+    function addNewTask() {
+        const titleInput = document.getElementById('taskTitleInput');
+        const durationInput = document.getElementById('taskDurationInput');
+        const priorityInput = document.getElementById('taskPriorityInput');
+
+        if (!titleInput.value) { alert("タスク名を入力してください"); return; }
 
         const newTask = {
             id: Date.now(),
             title: titleInput.value,
             duration: parseInt(durationInput.value),
             priority: priorityInput.value,
-            startTime: null,
-            endTime: null
+            type: 'general' // デフォルトタイプ
         };
 
+        // タスクを追加
         tasks.push(newTask);
-        
-        // 入力クリア
+
+        // スケジュール再計算と描画
+        const calculatedTasks = calculateSchedule(tasks, currentAppTime);
+        tasks = calculatedTasks; // ソート結果を正とする
+        renderTimeline(tasks);
+
+        // モーダルを閉じてリセット
+        closeModal('addTaskModal');
         titleInput.value = '';
-        
-        // AIスケジュール実行
-        runAIScheduler();
     }
 
-    // Render Logic
-    function renderTasks() {
-        const container = document.getElementById('taskList');
-        container.innerHTML = '';
 
-        if (tasks.length === 0) {
-            container.innerHTML = '<div class="empty-state">タスクを追加してください。<br>AIが最適な流れを作ります。</div>';
-            return;
-        }
+    // ================= Feature: AI Feedback & Proposal =================
 
-        tasks.forEach((task, index) => {
-            const isCurrent = index === 0;
-            const timeStr = formatTime(task.startTime);
-            const endTimeStr = formatTime(task.endTime);
-            
-            const div = document.createElement('div');
-            div.className = `task-card priority-${task.priority} ${isCurrent ? 'is-current' : ''}`;
-            
-            div.innerHTML = `
-                <div class="task-time">
-                    <div>${timeStr}</div>
-                    <div style="font-size:0.6rem; opacity:0.6;">${endTimeStr}</div>
-                </div>
-                <div class="task-content">
-                    <div class="task-title">${task.title} ${isCurrent ? '🔥' : ''}</div>
-                    <div class="task-meta">
-                        <span>⏱ ${task.duration}分</span>
-                        <span>${task.priority === 'high' ? '⚡ 優先' : ''}</span>
-                    </div>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    }
+    function generateProposal(type) {
+        const aiMessageEl = document.getElementById('aiMessage');
+        const optionsEl = document.getElementById('feedbackOptions');
+        const proposalAreaEl = document.getElementById('proposalArea');
+        const proposalTextEl = document.getElementById('proposalText');
 
-    // Helper: Time Format
-    function formatTime(date) {
-        return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-    }
+        // UI切り替え (思考中...)
+        optionsEl.style.display = 'none';
+        proposalAreaEl.style.display = 'block';
+        aiMessageEl.innerText = "AIが最適化パターンを計算中...";
+        proposalTextEl.innerHTML = '<div style="text-align:center; color:#999;">計算しています...</div>';
 
-    // Feedback: Delay (+15min)
-    function triggerDelay() {
-        if (tasks.length === 0) return;
-
-        // 現在のタスク（先頭）の時間を延ばす
-        tasks[0].duration += 15;
-        
-        // AI再計算（後続のタスクが自動でずれる）
-        runAIScheduler();
-
-        // ビジュアルフィードバック（本来はトースト通知など）
-        const btn = document.querySelector('.btn-delay');
-        const originalText = btn.innerText;
-        btn.innerText = "再計算中...";
-        setTimeout(() => btn.innerText = originalText, 500);
-    }
-
-    // Feedback: Complete
-    function completeCurrent() {
-        if (tasks.length === 0) return;
-
-        // アニメーション用に要素を取得して消す演出（簡易的）
-        const cards = document.querySelectorAll('.task-card');
-        if(cards[0]) {
-            cards[0].style.transform = "translateX(100px)";
-            cards[0].style.opacity = "0";
-        }
-
+        // 擬似的な計算遅延
         setTimeout(() => {
-            // タスク削除
-            tasks.shift();
-            // 開始時間を現在時刻にリセット（次のタスクを今から始める）
-            baseTime = new Date();
-            // 分を丸める
-            let m = baseTime.getMinutes();
-            baseTime.setMinutes(m + (5 - m % 5)); // 5分切り上げなど
+            let tempTasks = JSON.parse(JSON.stringify(tasks)); // 現在のタスクのディープコピー
+            let message = "";
+            let proposalHtml = "";
+            let highlightIds = [];
 
-            runAIScheduler();
-        }, 300);
+            if (tempTasks.length === 0) {
+               aiMessageEl.innerText = "タスクがありません。";
+               proposalTextEl.innerHTML = "まずはタスクを追加してください。";
+               return;
+            }
+            
+            const currentTask = tempTasks[0];
+
+            switch(type) {
+                case 'stuck': // 時間がかかっている
+                    message = "難航しているようですね。計画を修正します。";
+                    // 1. 現在のタスクを延長
+                    currentTask.duration += 30;
+                    highlightIds.push(currentTask.id);
+                    
+                    // 2. (オプション) 低優先度を削除候補にする
+                    const lowPriIndex = tempTasks.findIndex(t => t.priority === 'low' && t.id !== currentTask.id);
+                    if(lowPriIndex > -1) {
+                        tempTasks[lowPriIndex].removed = true;
+                        highlightIds.push(tempTasks[lowPriIndex].id);
+                        proposalHtml = `<strong>提案:</strong><br>「${currentTask.title}」を30分延長します。<br>時間の帳尻を合わせるため、低優先の「${tempTasks[lowPriIndex].title}」を本日の予定から外します。`;
+                    } else {
+                        proposalHtml = `<strong>提案:</strong><br>「${currentTask.title}」を30分延長します。<br>後続のタスクはすべて順延されます。`;
+                    }
+                    break;
+
+                case 'tired': // 疲れた
+                    message = "お疲れ様です。少し休憩を挟みましょう。";
+                    const breakTask = { id: Date.now(), title: "☕️ 休憩", duration: 15, priority: "fixed", type: "break" };
+                    // 現在のタスクの次に休憩を挿入
+                    tempTasks.splice(1, 0, breakTask);
+                    highlightIds.push(breakTask.id);
+                    proposalHtml = `<strong>提案:</strong><br>次のタスクの前に、15分の休憩時間を確保しました。リフレッシュしましょう。`;
+                    break;
+
+                case 'done': // 完了
+                    message = "お疲れ様でした！次のタスクへ進みます。";
+                    tempTasks[0].removed = true; // 現在のタスクを完了扱い
+                    highlightIds.push(tempTasks[0].id);
+                     proposalHtml = `<strong>提案:</strong><br>「${currentTask.title}」を完了とします。<br>準備ができ次第、次のタスクに取り掛かりましょう。`;
+                    // ※本来はここでcurrentAppTimeを進める処理が入るが、プレビューなので据え置き
+                    break;
+            }
+
+            // 提案用に再計算（ソートはしない、今の並びを維持して変更を適用）
+            pendingProposalTasks = calculateSchedule(tempTasks, currentAppTime, true);
+
+            // AIメッセージ更新
+            aiMessageEl.innerText = message;
+            proposalTextEl.innerHTML = proposalHtml;
+
+            // タイムラインでプレビュー表示（変更箇所をハイライト、削除予定も表示）
+            renderTimeline(pendingProposalTasks, { highlightIds: highlightIds, showRemoved: true, dimOthers: true });
+
+        }, 800);
     }
-    
-    // Enterキーで追加
-    document.getElementById('taskInput').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') addTask();
-    });
+
+    // 提案を適用する
+    function applyProposal() {
+        if (pendingProposalTasks) {
+            // 完了(removed)のタスクをリストから物理的に削除
+            tasks = pendingProposalTasks.filter(t => !t.removed);
+            
+            // もし先頭のタスクが完了して削除されていたら、時間が進んだことにする（簡易実装）
+            if(pendingProposalTasks[0] && pendingProposalTasks[0].removed) {
+                 // 次のタスクの開始予定時間を現在時刻とする
+                 if(tasks.length > 0) {
+                     currentAppTime = new Date(tasks[0].start);
+                 }
+            }
+
+            // 正式に再計算して描画
+            tasks = calculateSchedule(tasks, currentAppTime);
+            renderTimeline(tasks);
+            
+            closeModal('aiModal');
+            pendingProposalTasks = null;
+        }
+    }
+
+    // AIモーダルを初期状態に戻す
+    function resetAIModal() {
+        document.getElementById('feedbackOptions').style.display = 'grid';
+        document.getElementById('proposalArea').style.display = 'none';
+        document.getElementById('aiMessage').innerHTML = '今の状況を教えてください。<br>スケジュールを調整します。';
+        // タイムラインを現行に戻す
+        renderTimeline(tasks);
+    }
+
+
+    // ================= UI Helpers =================
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+        if(id === 'aiModal') resetAIModal();
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+        if(id === 'aiModal') resetAIModal(); // 閉じる時にプレビューを戻す
+    }
+    // 各FABボタンにイベント設定
+    function openAddTaskModal() { openModal('addTaskModal'); }
+    function openAIModal() { openModal('aiModal'); }
+
+    function formatTime(date) {
+        return date ? date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+    }
+    function updateCurrentTimeDisplay() {
+        document.getElementById('currentTimeDisplay').innerText = `${formatTime(currentAppTime)} Now`;
+    }
+
+
+    // ================= Initial Render =================
+    // 初期データでスケジュール計算して描画
+    tasks = calculateSchedule(tasks, currentAppTime);
+    renderTimeline(tasks);
 
 </script>
 
