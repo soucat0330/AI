@@ -3,425 +3,385 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fluid Planner - Full Screen</title>
+    <title>Fluid Planner - Energy & Density</title>
     <style>
         :root {
-            --primary: #6366f1; /* Indigo */
-            --primary-bg: #eef2ff;
-            --accent: #ec4899;  /* Pink */
-            --bg-main: #f8fafc;
-            --bg-panel: #ffffff;
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
             --text-main: #0f172a;
             --text-sub: #64748b;
             --border: #e2e8f0;
-            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            
-            --sidebar-width: 400px;
+            --accent-high: #f43f5e; /* High Energy */
+            --accent-mid: #3b82f6;  /* Mid Energy */
+            --accent-low: #10b981;  /* Low Energy */
         }
 
-        /* Reset & Base */
+        /* === Layout & Base === */
         body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg-main);
-            color: var(--text-main);
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden; /* App container handles scrolling */
-            display: flex;
-            flex-direction: column;
+            margin: 0; padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-body); color: var(--text-main);
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* === 1. App Header (Always Visible) === */
-        header.app-header {
-            height: 60px;
-            padding: 0 24px;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 50;
-            flex-shrink: 0;
+        /* === Header (Dense Info) === */
+        header {
+            height: 50px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; z-index: 50; flex-shrink: 0;
         }
-
-        .logo { font-weight: 800; font-size: 1.25rem; color: var(--primary); letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;}
-        .time-pill { font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums; background: var(--bg-main); padding: 4px 12px; border-radius: 20px; color: var(--text-sub); }
-
-        /* === 2. Main Layout (Grid) === */
-        main.app-grid {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-            position: relative;
+        .brand { font-weight: 800; font-size: 1.1rem; color: var(--primary); display: flex; gap: 8px; align-items: center; }
+        .stats-pill {
+            display: flex; gap: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-sub);
+            background: var(--bg-body); padding: 4px 12px; border-radius: 20px;
         }
+        .stat-val { color: var(--text-main); }
+        .clock-display { font-family: monospace; font-weight: 700; color: var(--primary); font-size: 0.95rem; }
 
-        /* --- Left/Main: Timeline Stream --- */
-        section.timeline-section {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            /* Scrollbar styling */
-            scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 transparent;
-        }
-        
-        /* コンテンツが横に伸びすぎないようにするコンテナ */
-        .stream-container {
-            max-width: 800px; /* PCでも読みやすい幅に制限 */
-            margin: 0 auto;
-            padding-bottom: 100px; /* Mobile FAB area */
-        }
+        /* === Main Grid === */
+        main { flex: 1; display: flex; overflow: hidden; }
 
-        /* Timeline Items */
+        /* Left: Timeline Stream */
+        .timeline-section { flex: 1; overflow-y: auto; padding: 16px; position: relative; scrollbar-width: thin; }
+        .stream-container { max-width: 700px; margin: 0 auto; padding-bottom: 80px; }
+
+        /* === Rich Task Card === */
         .task-card {
-            background: var(--bg-panel);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 16px;
-            box-shadow: var(--shadow-soft);
-            display: flex;
-            gap: 16px;
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: 1px solid transparent;
-            cursor: default;
+            background: var(--bg-card); border-radius: 12px; padding: 0;
+            margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border); transition: all 0.2s;
+            position: relative; overflow: hidden;
+            display: grid; grid-template-columns: 70px 1fr auto; /* Grid Layout */
         }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: var(--primary-light); }
         
-        /* Hover effect mainly for Desktop */
-        @media (hover: hover) {
-            .task-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); border-color: var(--primary-bg); }
+        /* Time Column (Left) */
+        .card-time {
+            background: #f8fafc; border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 12px 8px; font-size: 0.75rem; font-weight: 600; color: var(--text-sub);
         }
+        .time-end { opacity: 0.6; margin-top: 4px; font-weight: 400; }
 
-        /* Task States */
-        .task-card.is-active { background: var(--primary-bg); border: 1px solid #c7d2fe; position: relative; overflow: hidden; }
-        .task-card.is-active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--primary); }
+        /* Content Column (Center) */
+        .card-content { padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+        .card-header { display: flex; align-items: center; gap: 8px; }
+        .card-title { font-weight: 700; font-size: 0.95rem; line-height: 1.2; color: var(--text-main); }
+        .card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
         
-        .task-card.will-remove { opacity: 0.5; filter: grayscale(100%); transform: scale(0.95); }
-        .task-card.will-change { animation: flash 1s infinite alternate; }
-        @keyframes flash { from { background: var(--bg-panel); } to { background: #fffbeb; } }
+        .badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid transparent; }
+        .badge.energy-high { background: #ffe4e6; color: var(--accent-high); border-color: #fecdd3; }
+        .badge.energy-mid { background: #dbeafe; color: var(--accent-mid); border-color: #bfdbfe; }
+        .badge.energy-low { background: #d1fae5; color: var(--accent-low); border-color: #a7f3d0; }
+        .badge.fixed { background: #f1f5f9; color: var(--text-sub); border-color: var(--border); }
 
-        .time-col { display: flex; flex-direction: column; align-items: flex-end; min-width: 60px; text-align: right; }
-        .t-start { font-weight: 700; font-size: 1rem; color: var(--text-main); }
-        .t-end { font-size: 0.8rem; color: var(--text-sub); margin-top: 2px; }
+        /* Meta Column (Right) */
+        .card-meta { padding: 12px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; border-left: 1px solid transparent; }
+        .duration-pill { font-size: 0.75rem; font-weight: 700; color: var(--text-sub); background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }
+
+        /* Active State Enhancements */
+        .task-card.active { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1); }
+        .task-card.active .card-time { background: var(--primary); color: white; }
+        .task-card.active .time-end { color: rgba(255,255,255,0.8); }
         
-        .info-col { flex: 1; }
-        .t-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; line-height: 1.4; }
-        .t-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-        .tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; background: var(--bg-main); color: var(--text-sub); font-weight: 500; }
-        .tag.p-high { background: #fee2e2; color: #ef4444; }
-        .tag.p-fixed { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        /* Progress Bar (Only for active task) */
+        .progress-track {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #e2e8f0; display: none;
+        }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 1s linear; }
+        .task-card.active .progress-track { display: block; }
 
-        /* --- Right: Cockpit Sidebar (Desktop Only) --- */
-        aside.sidebar-section {
-            width: var(--sidebar-width);
-            background: var(--bg-panel);
-            border-left: 1px solid var(--border);
-            display: none; /* Mobile default: hidden */
-            flex-direction: column;
-            padding: 32px;
-            z-index: 40;
-            box-shadow: -4px 0 24px rgba(0,0,0,0.02);
+        /* === Right: Cockpit / Energy Dashboard (PC) === */
+        .sidebar {
+            width: 320px; background: #fff; border-left: 1px solid var(--border);
+            display: none; flex-direction: column; z-index: 20;
+        }
+        .widget { padding: 20px; border-bottom: 1px solid var(--border); }
+        .widget h3 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-sub); margin: 0 0 12px 0; letter-spacing: 1px; }
+        
+        /* Energy Graph Widget */
+        .energy-graph { height: 100px; width: 100%; position: relative; border-bottom: 1px dashed var(--border); display: flex; align-items: flex-end; gap: 4px; }
+        .bar { flex: 1; background: var(--primary-light); border-radius: 4px 4px 0 0; transition: height 0.3s; position: relative; }
+        .bar.current { background: var(--primary); }
+        .bar:hover::after {
+            content: attr(data-label); position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            font-size: 0.6rem; background: #000; color: #fff; padding: 2px 4px; border-radius: 4px;
         }
 
-        /* Cockpit Widgets */
-        .focus-widget {
-            text-align: center;
-            padding: 32px 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 32px;
+        /* Action Buttons */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 20px; margin-top: auto; }
+        .btn {
+            padding: 12px; border: 1px solid var(--border); background: #fff; border-radius: 8px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.1s;
         }
-        .focus-label { text-transform: uppercase; font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px; color: var(--text-sub); margin-bottom: 12px; }
-        .focus-timer { font-size: 3.5rem; font-weight: 200; color: var(--primary); line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
-        .focus-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+        .btn:hover { background: #f8fafc; border-color: var(--text-sub); }
+        .btn-pri { background: var(--text-main); color: #fff; border: none; }
+        .btn-pri:hover { background: #334155; }
 
-        .control-grid { display: grid; gap: 16px; margin-top: auto; }
-        .btn-panel {
-            padding: 16px; border-radius: 12px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s;
-        }
-        .btn-panel.primary { background: var(--text-main); color: white; }
-        .btn-panel.secondary { background: white; border: 2px solid var(--border); color: var(--text-main); }
-        .btn-panel:active { transform: scale(0.98); }
-
-        /* === 3. Mobile Floating Controls (Mobile Only) === */
-        .mobile-fab-bar {
-            position: fixed;
-            bottom: 30px;
-            left: 0; right: 0;
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            z-index: 100;
-            pointer-events: none; /* Area transparent */
+        /* === Mobile FAB === */
+        .mobile-fab {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 16px; z-index: 100;
         }
         .fab {
-            width: 64px; height: 64px; border-radius: 50%; border: none;
-            box-shadow: var(--shadow-float); color: white; font-size: 1.6rem;
-            pointer-events: auto; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            width: 56px; height: 56px; border-radius: 20px; border: none; font-size: 1.4rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .fab:active { transform: scale(0.9); }
-        .fab.ai { background: var(--text-main); }
-        .fab.add { background: var(--primary); }
+        .fab.add { background: var(--primary); color: white; }
+        .fab.ai { background: var(--text-main); color: white; }
 
-
-        /* === Responsive Breakpoints === */
+        /* Responsive */
         @media (min-width: 900px) {
-            /* Desktop Layout Active */
-            aside.sidebar-section { display: flex; }
-            .mobile-fab-bar { display: none; } /* Hide Mobile FABs */
-            .stream-container { margin: 0; max-width: 100%; padding-right: 40px; } /* Align text naturally */
+            .sidebar { display: flex; }
+            .mobile-fab { display: none; }
         }
 
-        /* === Modals (Shared) === */
-        .modal-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
-            z-index: 200;
-            display: none;
-            /* Flex layout determined by media query below */
+        /* === Modals === */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+            z-index: 200; display: none; align-items: center; justify-content: center;
         }
-        .modal-overlay.active { display: flex; }
-
-        .modal-card {
-            background: white;
-            padding: 32px;
-            box-shadow: var(--shadow-float);
-            display: flex; flex-direction: column;
+        .overlay.active { display: flex; }
+        .modal-box {
+            background: #fff; padding: 24px; border-radius: 16px; width: 90%; max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
         }
-
-        /* Mobile Modal: Bottom Sheet */
-        @media (max-width: 899px) {
-            .modal-overlay { align-items: flex-end; }
-            .modal-card {
-                width: 100%; border-radius: 32px 32px 0 0;
-                animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        }
-
-        /* Desktop Modal: Center Dialog */
-        @media (min-width: 900px) {
-            .modal-overlay { align-items: center; justify-content: center; }
-            .modal-card {
-                width: 480px; border-radius: 24px;
-                animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        }
-
-        /* Form & Content Styles */
-        h2 { margin: 0 0 24px 0; font-size: 1.5rem; }
-        .input-block { margin-bottom: 20px; }
-        input, select { 
-            width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 12px; 
-            font-size: 1rem; box-sizing: border-box; outline: none; background: var(--bg-main);
-        }
-        input:focus, select:focus { border-color: var(--primary); background: white; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
+        .form-label { font-size: 0.75rem; font-weight: 700; color: var(--text-sub); margin-bottom: 4px; display: block; }
         
-        .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .ai-option {
-            background: var(--bg-main); padding: 20px; border-radius: 16px; text-align: center;
-            cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
+        .energy-select { display: flex; gap: 8px; margin-bottom: 16px; }
+        .e-opt {
+            flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+            text-align: center; font-size: 0.8rem; cursor: pointer; font-weight: 600;
         }
-        .ai-option:hover { background: var(--primary-bg); border-color: var(--primary); }
-        .ai-emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
-        .ai-text { font-weight: 700; font-size: 0.9rem; }
-
-        .proposal-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 16px; margin-bottom: 20px; line-height: 1.6; }
+        .e-opt.sel { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
 
     </style>
 </head>
 <body>
 
-    <header class="app-header">
-        <div class="logo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
-                <path d="M12 6V12L16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            Fluid Planner
+    <header>
+        <div class="brand">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 19h20L12 2zm0 3.8L18.4 17H5.6L12 5.8z"/></svg>
+            Fluid Planner <span style="font-weight:400; opacity:0.5; font-size:0.8em;">Pro</span>
         </div>
-        <div class="time-pill" id="clockDisplay">--:--</div>
+        <div class="stats-pill">
+            <span>完了: <span class="stat-val" id="doneCount">0</span></span>
+            <span>残り: <span class="stat-val" id="remainHours">0h</span></span>
+        </div>
+        <div class="clock-display" id="clock">--:--</div>
     </header>
 
-    <main class="app-grid">
-        
+    <main>
         <section class="timeline-section">
-            <div class="stream-container" id="timelineList">
+            <div class="stream-container" id="taskList">
                 </div>
         </section>
 
-        <aside class="sidebar-section">
-            <div class="focus-widget">
-                <div class="focus-label">Current Focus</div>
-                <div class="focus-timer" id="sidebarTimer">00:00</div>
-                <div class="focus-title" id="sidebarTitle">No Active Task</div>
-            </div>
-            
-            <div style="flex:1; background:var(--bg-main); border-radius:16px; padding:20px; margin-bottom:20px;">
-                <h4 style="margin:0 0 10px 0; color:var(--text-sub);">AI Insight</h4>
-                <p style="font-size:0.9rem; margin:0; line-height:1.5;">スケジュールは最適化されています。<br>次の会議まで45分の集中時間があります。</p>
+        <aside class="sidebar">
+            <div class="widget">
+                <h3>Current Focus</h3>
+                <div style="font-size:1.5rem; font-weight:800; line-height:1.2; margin-bottom:4px;" id="sideTitle">---</div>
+                <div style="font-family:monospace; color:var(--primary); font-size:1.1rem; font-weight:bold;" id="sideTimer">00:00:00</div>
             </div>
 
-            <div class="control-grid">
-                <button class="btn-panel secondary" onclick="openModal('aiModal')">✨ AIに相談</button>
-                <button class="btn-panel primary" onclick="openModal('addModal')">➕ タスク追加</button>
+            <div class="widget">
+                <h3>Energy Forecast</h3>
+                <div class="energy-graph" id="energyGraph">
+                    </div>
+                <div style="font-size:0.75rem; color:var(--text-sub); margin-top:8px; text-align:center;">
+                    Morning Peak • Afternoon Dip • Evening Focus
+                </div>
+            </div>
+
+            <div class="action-grid">
+                <button class="btn" onclick="openAI()">✨ AI調整</button>
+                <button class="btn btn-pri" onclick="openAdd()">➕ 追加</button>
             </div>
         </aside>
-
     </main>
 
-    <div class="mobile-fab-bar">
-        <button class="fab ai" onclick="openModal('aiModal')">✨</button>
-        <button class="fab add" onclick="openModal('addModal')">➕</button>
+    <div class="mobile-fab">
+        <button class="fab ai" onclick="openAI()">✨</button>
+        <button class="fab add" onclick="openAdd()">➕</button>
     </div>
 
-    <div class="modal-overlay" id="addModal" onclick="if(event.target === this) closeModal('addModal')">
-        <div class="modal-card">
-            <h2>New Task</h2>
-            <div class="input-block">
-                <input type="text" id="inpTitle" placeholder="タスク名を入力..." autofocus>
+    <div class="overlay" id="addModal" onclick="if(event.target===this) closeModal('addModal')">
+        <div class="modal-box">
+            <h3 style="margin-top:0;">New Task</h3>
+            
+            <label class="form-label">TITLE</label>
+            <input type="text" id="inpTitle" placeholder="会議、コーディングなど">
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                    <label class="form-label">DURATION</label>
+                    <select id="inpDur">
+                        <option value="15">15 min</option>
+                        <option value="30" selected>30 min</option>
+                        <option value="60">60 min</option>
+                        <option value="90">90 min</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">PRIORITY</label>
+                    <select id="inpPri">
+                        <option value="normal">Normal</option>
+                        <option value="fixed">Fixed (Lock)</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
             </div>
-            <div class="input-block" style="display:flex; gap:12px;">
-                <select id="inpDur">
-                    <option value="15">15 min</option>
-                    <option value="30" selected>30 min</option>
-                    <option value="60">60 min</option>
-                    <option value="90">90 min</option>
-                </select>
-                <select id="inpPri">
-                    <option value="high">⚡ High</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="low">Low</option>
-                </select>
+
+            <label class="form-label">ENERGY LEVEL (負荷)</label>
+            <div class="energy-select" id="energySel">
+                <div class="e-opt" onclick="selEnergy(this, 'high')" data-val="high">🔥 Heavy</div>
+                <div class="e-opt sel" onclick="selEnergy(this, 'mid')" data-val="mid">💧 Mid</div>
+                <div class="e-opt" onclick="selEnergy(this, 'low')" data-val="low">🍃 Light</div>
             </div>
-            <button class="btn-panel primary" style="width:100%" onclick="addTask()">スケジュールに追加</button>
+
+            <button class="btn btn-pri" style="width:100%" onclick="addTask()">スケジュールに追加</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="aiModal" onclick="if(event.target === this) closeModal('aiModal')">
-        <div class="modal-card">
-            <h2 id="aiHeaderTitle">AI Assistant</h2>
-            
-            <div id="aiSelection" class="ai-grid">
-                <div class="ai-option" onclick="runAI('stuck')">
-                    <span class="ai-emoji">🐌</span>
-                    <span class="ai-text">時間がかかってる</span>
-                </div>
-                <div class="ai-option" onclick="runAI('tired')">
-                    <span class="ai-emoji">☕️</span>
-                    <span class="ai-text">休憩したい</span>
-                </div>
-                <div class="ai-option" onclick="runAI('rush')">
-                    <span class="ai-emoji">🚨</span>
-                    <span class="ai-text">緊急の割り込み</span>
-                </div>
-                <div class="ai-option" onclick="runAI('done')">
-                    <span class="ai-emoji">✅</span>
-                    <span class="ai-text">完了！次へ</span>
-                </div>
+    <div class="overlay" id="aiModal" onclick="if(event.target===this) closeModal('aiModal')">
+        <div class="modal-box">
+            <h3 style="margin-top:0;">AI Assistant</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <button class="btn" onclick="runAI('stuck')">🐌 遅れている</button>
+                <button class="btn" onclick="runAI('tired')">☕️ 休憩挿入</button>
+                <button class="btn" onclick="runAI('optimize')">⚡️ エネルギー最適化</button>
+                <button class="btn" onclick="runAI('done')">✅ 完了・次へ</button>
             </div>
-
-            <div id="aiProposal" style="display:none;">
-                <div class="proposal-box" id="aiProposalText"></div>
-                <div style="display:flex; gap:12px;">
-                    <button class="btn-panel secondary" style="flex:1" onclick="resetAI()">戻る</button>
-                    <button class="btn-panel primary" style="flex:1" onclick="applyAI()">適用する</button>
-                </div>
-            </div>
-
+            <div id="aiMsg" style="margin-top:16px; font-size:0.9rem; background:#f0f9ff; padding:10px; border-radius:8px; display:none; border:1px solid #bae6fd;"></div>
         </div>
     </div>
 
 <script>
-    // === Data & State ===
+    // === Data ===
     let tasks = [
-        { id: 1, title: "UIプロトタイプ作成", duration: 60, priority: "high", type: "Design" },
-        { id: 2, title: "チーム定例MTG", duration: 30, priority: "fixed", type: "Meeting" },
-        { id: 3, title: "クライアント返信", duration: 15, priority: "low", type: "Admin" },
-        { id: 4, title: "技術選定ドキュメント", duration: 45, priority: "normal", type: "Dev" }
+        { id: 1, title: "UIデザイン修正", duration: 60, priority: "high", energy: "high" },
+        { id: 2, title: "チーム定例", duration: 30, priority: "fixed", energy: "mid" },
+        { id: 3, title: "メール返信", duration: 15, priority: "low", energy: "low" },
+        { id: 4, title: "仕様書レビュー", duration: 45, priority: "normal", energy: "high" }
     ];
+    let doneCount = 0;
+    let selectedEnergy = "mid";
 
-    let currentTime = new Date();
-    currentTime.setHours(14, 0, 0, 0); // Demo Start Time
-    let pendingTasks = null;
+    // === Clock & Scheduler ===
+    function tick() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        
+        // Update Progress Bar of active task
+        const activeCard = document.querySelector('.task-card.active');
+        if(activeCard) {
+            const bar = activeCard.querySelector('.progress-fill');
+            // Mock progress: In real app, calculate (now - start) / duration
+            // Here just simplified animation or random for demo
+            if(bar) bar.style.width = ((now.getSeconds() / 60) * 100) + '%';
+        }
+    }
+    setInterval(tick, 1000);
 
-    // === Core Functions ===
-    function calculateTimes(list) {
-        let cursor = new Date(currentTime);
-        return list.map(t => {
-            if(t.removed) return t;
-            const start = new Date(cursor);
-            cursor.setMinutes(cursor.getMinutes() + t.duration);
-            return { ...t, start: start, end: new Date(cursor) };
+    // Schedule Logic (Absolute Time)
+    function calcSchedule() {
+        let cursor = new Date();
+        // Round to nearest minute for stability
+        cursor.setSeconds(0); 
+
+        return tasks.map(t => {
+            let start = new Date(cursor);
+            let end = new Date(cursor.getTime() + t.duration * 60000);
+            cursor = end;
+            return { ...t, start, end };
         });
     }
 
     function render() {
-        // 1. Sort & Calc
-        // Simple sort: Fixed > High > Normal > Low (if not previewing)
-        if(!pendingTasks) {
-            const fixed = tasks.filter(t => t.priority === 'fixed');
-            const others = tasks.filter(t => t.priority !== 'fixed');
-            const score = p => p === 'high' ? 3 : (p === 'normal' ? 2 : 1);
-            others.sort((a,b) => score(b.priority) - score(a.priority));
-            tasks = [...fixed, ...others];
-            tasks = calculateTimes(tasks);
-        }
+        const list = document.getElementById('taskList');
+        list.innerHTML = '';
+        
+        // Stats
+        let totalMin = tasks.reduce((acc, t) => acc + t.duration, 0);
+        document.getElementById('remainHours').innerText = (totalMin / 60).toFixed(1) + "h";
+        document.getElementById('doneCount').innerText = doneCount;
 
-        const displayTasks = pendingTasks || tasks;
-        const container = document.getElementById('timelineList');
-        container.innerHTML = '';
-
-        // 2. Render List
-        displayTasks.forEach((t, index) => {
-            if(t.removed && !pendingTasks) return; // Don't show removed in normal view
-
+        const schedule = calcSchedule();
+        
+        schedule.forEach((t, i) => {
+            const isActive = i === 0;
             const div = document.createElement('div');
-            let classes = ['task-card'];
-            if(index === 0 && !t.removed) classes.push('is-active');
-            if(t.removed) classes.push('will-remove');
-            if(t.highlight) classes.push('will-change');
+            div.className = `task-card ${isActive ? 'active' : ''}`;
             
-            div.className = classes.join(' ');
+            // Badge Logic
+            let eBadge = t.energy === 'high' ? '<span class="badge energy-high">🔥 Heavy</span>' :
+                         t.energy === 'low'  ? '<span class="badge energy-low">🍃 Light</span>' :
+                         '<span class="badge energy-mid">💧 Mid</span>';
+            
+            let pBadge = t.priority === 'high' ? '<span class="badge" style="background:#fee2e2; color:#ef4444;">High Pri</span>' :
+                         t.priority === 'fixed' ? '<span class="badge fixed">Fixed</span>' : '';
 
             div.innerHTML = `
-                <div class="time-col">
-                    <span class="t-start">${fmtTime(t.start)}</span>
-                    <span class="t-end">${fmtTime(t.end)}</span>
+                <div class="card-time">
+                    <span>${fmt(t.start)}</span>
+                    <span class="time-end">${fmt(t.end)}</span>
                 </div>
-                <div class="info-col">
-                    <div class="t-title">${t.title}</div>
-                    <div class="t-tags">
-                        <span class="tag">⏱ ${t.duration}m</span>
-                        ${t.priority === 'high' ? '<span class="tag p-high">Priority</span>' : ''}
-                        ${t.priority === 'fixed' ? '<span class="tag p-fixed">Fixed</span>' : ''}
-                        ${t.type ? `<span class="tag">${t.type}</span>` : ''}
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-title">${t.title}</span>
+                    </div>
+                    <div class="card-tags">
+                        ${eBadge}
+                        ${pBadge}
                     </div>
                 </div>
+                <div class="card-meta">
+                    <span class="duration-pill">${t.duration}m</span>
+                    ${isActive ? '<span style="font-size:0.7rem; color:var(--primary);">Running</span>' : ''}
+                </div>
+                <div class="progress-track"><div class="progress-fill"></div></div>
             `;
-            container.appendChild(div);
+            list.appendChild(div);
         });
 
-        // 3. Update Sidebar (Desktop)
-        const active = displayTasks.find(t => !t.removed);
-        if(active) {
-            document.getElementById('sidebarTitle').innerText = active.title;
-            document.getElementById('sidebarTimer').innerText = active.duration + ":00";
+        // Sidebar Info
+        if(schedule.length > 0) {
+            document.getElementById('sideTitle').innerText = schedule[0].title;
+            // Fake countdown for sidebar
+            document.getElementById('sideTimer').innerText = schedule[0].duration + "m left";
         } else {
-            document.getElementById('sidebarTitle').innerText = "All Done";
-            document.getElementById('sidebarTimer').innerText = "--:--";
+            document.getElementById('sideTitle').innerText = "All Done";
+            document.getElementById('sideTimer').innerText = "--:--";
         }
-        
-        document.getElementById('clockDisplay').innerText = fmtTime(currentTime);
+
+        renderEnergyGraph(schedule);
+    }
+
+    // Sidebar Graph Renderer
+    function renderEnergyGraph(schedule) {
+        const container = document.getElementById('energyGraph');
+        container.innerHTML = '';
+        // Create 8 bars representing next 4 hours (30m chunks)
+        for(let i=0; i<8; i++) {
+            // Mock forecast: High in morning, dip later
+            let h = 30 + Math.random() * 70; 
+            const bar = document.createElement('div');
+            bar.className = 'bar ' + (i===0 ? 'current' : '');
+            bar.style.height = h + '%';
+            bar.setAttribute('data-label', `+${i*30}m`);
+            container.appendChild(bar);
+        }
     }
 
     // === Actions ===
+    function selEnergy(el, val) {
+        document.querySelectorAll('.e-opt').forEach(d => d.classList.remove('sel'));
+        el.classList.add('sel');
+        selectedEnergy = val;
+    }
+
     function addTask() {
         const title = document.getElementById('inpTitle').value;
         if(!title) return;
@@ -430,88 +390,55 @@
             title: title,
             duration: parseInt(document.getElementById('inpDur').value),
             priority: document.getElementById('inpPri').value,
-            type: "General"
+            energy: selectedEnergy
         });
-        document.getElementById('inpTitle').value = "";
         closeModal('addModal');
+        document.getElementById('inpTitle').value = '';
         render();
     }
 
-    function runAI(scenario) {
-        document.getElementById('aiSelection').style.display = 'none';
-        document.getElementById('aiProposal').style.display = 'block';
-        document.getElementById('aiProposalText').innerHTML = "計算中...";
+    function runAI(type) {
+        const msgEl = document.getElementById('aiMsg');
+        msgEl.style.display = 'block';
+        msgEl.innerText = '最適化中...';
 
-        // Simulate AI Delay
         setTimeout(() => {
-            let sim = JSON.parse(JSON.stringify(tasks)); // Deep copy
-            // Pre-calculate times for simulation base
-            sim = calculateTimes(sim); 
-            
-            let msg = "";
-            let current = sim[0];
-
-            if(scenario === 'stuck') {
-                current.duration += 30;
-                current.highlight = true;
-                msg = `<strong>提案:</strong><br>現在進行中の「${current.title}」を30分延長します。<br>後続のスケジュールは自動的に順延されます。`;
-            } else if(scenario === 'tired') {
-                const brk = { id: 99, title: "☕️ リフレッシュ休憩", duration: 15, priority: 'fixed', type: 'Break', highlight: true };
-                sim.splice(1, 0, brk);
-                msg = `<strong>提案:</strong><br>効率維持のため、次のタスクの前に15分の休憩を挿入します。`;
-            } else if(scenario === 'rush') {
-                const rush = { id: 88, title: "🚨 緊急対応", duration: 45, priority: 'high', type: 'Urgent', highlight: true };
-                sim.splice(1, 0, rush); // Insert after current or at top
-                msg = `<strong>提案:</strong><br>「緊急対応」を最優先で割り込ませます。<br>他のタスクはリスケジュールされます。`;
-            } else if(scenario === 'done') {
-                current.removed = true;
-                msg = `<strong>提案:</strong><br>お疲れ様でした。「${current.title}」を完了とし、次のタスクを開始します。`;
+            if(type === 'stuck') {
+                tasks[0].duration += 15;
+                msgEl.innerText = '現在のタスクを15分延長しました。';
+            } else if(type === 'tired') {
+                tasks.splice(1, 0, {id:99, title:"休憩", duration:15, priority:"fixed", energy:"low"});
+                msgEl.innerText = '15分の休憩を追加しました。';
+            } else if(type === 'optimize') {
+                // Sort by Energy: High first, unless fixed
+                const fixed = tasks.filter(t=>t.priority==='fixed');
+                const others = tasks.filter(t=>t.priority!=='fixed');
+                // Sort others: High energy -> Mid -> Low
+                const eScore = e => e==='high'?3 : e==='mid'?2 : 1;
+                others.sort((a,b) => eScore(b.energy) - eScore(a.energy));
+                
+                // Reassemble (Simplified logic: Fixed tasks stay, others flow around)
+                // Ideally AI would weave them. Here we just put high energy first.
+                tasks = [...fixed, ...others]; 
+                msgEl.innerText = 'エネルギー効率が良い順（重い順）に並べ替えました。';
+            } else if(type === 'done') {
+                tasks.shift();
+                doneCount++;
+                msgEl.innerText = 'タスク完了！';
             }
-
-            // Recalculate simulation
-            sim = calculateTimes(sim);
-            pendingTasks = sim; // Set preview state
-            document.getElementById('aiProposalText').innerHTML = msg;
-            render(); // Render preview
-
-        }, 500);
-    }
-
-    function applyAI() {
-        if(pendingTasks) {
-            tasks = pendingTasks.filter(t => !t.removed);
-            if(pendingTasks[0].removed) {
-                // If current task finished, advance time (simulate)
-                // In real app, currentTime would be live.
-            }
-            tasks.forEach(t => delete t.highlight); // Remove visual highlights
-            pendingTasks = null;
-            closeModal('aiModal');
             render();
-        }
+            setTimeout(() => { closeModal('aiModal'); msgEl.style.display='none'; }, 1000);
+        }, 600);
     }
 
-    function resetAI() {
-        document.getElementById('aiSelection').style.display = 'grid';
-        document.getElementById('aiProposal').style.display = 'none';
-        pendingTasks = null;
-        render(); // Restore original view
-    }
-
-    // === Utils ===
-    function fmtTime(date) {
-        return date ? date.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) : '--:--';
-    }
-    function openModal(id) { 
-        document.getElementById(id).classList.add('active'); 
-        if(id==='aiModal') resetAI();
-        if(id==='addModal') setTimeout(()=>document.getElementById('inpTitle').focus(), 100);
-    }
+    // Utils
+    function fmt(d) { return d.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}); }
+    function openAdd() { document.getElementById('addModal').classList.add('active'); }
+    function openAI() { document.getElementById('aiModal').classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
     // Init
     render();
-
 </script>
 </body>
 </html>
